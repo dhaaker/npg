@@ -88,7 +88,7 @@ npgx/
 ## Milestone 5 — Views (plain PHP, no engine, deferred render)
 - [ ] `html($template, $context = [], $status = 200)` returns an `Html` description — it does **not** render on the spot.
 - [ ] `lib/view.php`: the renderer the runner calls during lowering — extracts `Html.context` into scope, `include`s `app/views/$template.php`, captures output into the `Response` body. Rendering lives here / in the runner, never as a method on `Html`. This single deferred step is also where layout, flash messages, and CSRF token get injected into the context.
-- [ ] `e()` escape helper (`htmlspecialchars`) for use in views; use native PHP control flow (`foreach`, `if`).
+- [x] `e()` escape helper (`htmlspecialchars`) for use in views; use native PHP control flow (`foreach`, `if`). *(Landed early in `lib/view.php` — views were already being written in Milestone 1; the deferred renderer still to come here.)*
 - **Check:** a handler returning `html(...)` renders via the runner with a loop + escaping; the returned `Html` still exposes `template`/`context`/`status` for tests to assert on before rendering; editing a template takes effect on next request — nothing to compile or cache.
 
 ## Milestone 6 — Middleware

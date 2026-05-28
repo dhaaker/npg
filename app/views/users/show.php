@@ -9,9 +9,9 @@ declare(strict_types=1);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>User <?= htmlspecialchars((string) $id, ENT_QUOTES, 'UTF-8') ?></title>
+    <title>User <?= e((string) $id) ?></title>
 </head>
 <body>
-    <h1>User <?= htmlspecialchars((string) $id, ENT_QUOTES, 'UTF-8') ?></h1>
+    <h1>User <?= e((string) $id) ?></h1>
 </body>
 </html>

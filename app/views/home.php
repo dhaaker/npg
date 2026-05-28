@@ -10,10 +10,10 @@ declare(strict_types=1);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?></title>
+    <title><?= e($name) ?></title>
 </head>
 <body>
-    <h1><?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?> is alive</h1>
-    <p>Request path: <?= htmlspecialchars($request_path, ENT_QUOTES, 'UTF-8') ?></p>
+    <h1><?= e($name) ?> is alive</h1>
+    <p>Request path: <?= e($request_path) ?></p>
 </body>
 </html>

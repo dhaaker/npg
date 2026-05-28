@@ -13,6 +13,6 @@ declare(strict_types=1);
 </head>
 <body>
     <h1>404</h1>
-    <p><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></p>
+    <p><?= e($message) ?></p>
 </body>
 </html>
