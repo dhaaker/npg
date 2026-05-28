@@ -61,10 +61,10 @@ npgx/
 
 ## Milestone 1 — Routing (one explicit table)
 *Goal: real URL table with path converters, no method dispatch.*
-- [ ] `lib/router.php`: `path($pattern, $handler)`; compile `<int:id>`, `<slug>`, `<str:name>` to a matcher; extract params in order.
-- [ ] `routes.php` route table returning `path(...)` entries.
-- [ ] Resolve handler name → callable (function in `app/handlers/`), call with `($request, ...$params)`.
-- [ ] 404 when no route matches.
+- [x] `lib/router.php`: `path($pattern, $handler)`; compile `<int:id>`, `<slug>`, `<str:name>` to a matcher; extract params in order.
+- [x] `routes.php` route table returning `path(...)` entries.
+- [x] Resolve handler name → callable (function in `app/handlers/`), call with `($request, ...$params)`.
+- [x] 404 when no route matches.
 - **Check:** `/users/<int:id>` calls a handler receiving `$id`.
 
 ## Milestone 2 — Config & env
@@ -117,14 +117,15 @@ npgx/
 
 ## Milestone 10 — Scaffolding & tests
 - [ ] `npg make:route` (handler stub + routes.php entry), `npg test` (tiny assertion runner).
-- [~] `tests/` for router, views, validation, db (SQLite), auth.
+- [~] `tests/` for router, views, validation, db (SQLite), auth (router covered in Milestone 1).
 - **Check:** `./npg test` is green; `make:route` produces a working route.
 
 > Landed early (alongside Milestone 0): a tiny built-in test harness (`tests/harness.php` flat
 > assertions + `tests/run.php` runner, discovers `tests/*_test.php`, exits non-zero on failure).
-> Covered so far: response lowering (`to_response`/`html`/`json`/`redirect`) and
-> `request_from_globals()`. Run with `php tests/run.php`; `npg test` will shell out to it once the
-> CLI exists. Router/views/validation/db/auth tests still to come with their milestones.
+> Covered so far: response lowering (`to_response`/`html`/`json`/`redirect`),
+> `request_from_globals()`, and routing (`path`/`compile_pattern`/`match_route`/`dispatch`).
+> Run with `php tests/run.php`; `npg test` will shell out to it once the CLI exists.
+> Views/validation/db/auth tests still to come with their milestones.
 
 ## Milestone 11 — Demo app + docs
 - [ ] A small CRUD feature (e.g. notes) exercising every subsystem end-to-end.

@@ -7,19 +7,11 @@ define('LIB_PATH', BASE_PATH . '/lib');
 
 require BASE_PATH . '/lib/bootstrap.php';
 
+foreach (glob(BASE_PATH . '/app/handlers/*.php') ?: [] as $handlerFile) {
+    require_once $handlerFile;
+}
+
+$routes = require BASE_PATH . '/routes.php';
 $request = request_from_globals();
 
-$result = match ($request->path) {
-    '/' => home($request),
-    default => not_found(),
-};
-
-to_response($result)->send();
-
-function home(Request $request): Html
-{
-    return html('home', [
-        'name' => 'npg',
-        'request_path' => $request->path,
-    ]);
-}
+to_response(dispatch($routes, $request))->send();
