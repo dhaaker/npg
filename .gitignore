@@ -1,0 +1,18 @@
+# Secrets / per-environment
+.env
+.env.*
+!.env.example
+
+# Runtime logs
+/storage/logs/*
+!/storage/logs/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+*.swp
+*.swo
+*~
