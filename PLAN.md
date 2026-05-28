@@ -52,11 +52,11 @@ npgx/
 
 ## Milestone 0 — Skeleton boots
 *Goal: a request reaches a hardcoded handler that returns a response description, and the runner sends it.*
-- [ ] `public/index.php` front controller: define base paths, require `lib/bootstrap.php`, dispatch; the handler returns a **description**, the runner lowers it into a `Response` and sends it.
-- [ ] `lib/bootstrap.php`: require lib files in dependency order.
-- [ ] `lib/request.php`: build a `Request` from PHP superglobals (method, path, query, post, headers, raw body).
-- [ ] `lib/response.php`: `Response` value object (status, headers, body) + `send()`. Immutable description objects `Html`/`Json`/`Redirect` (`final readonly class`, plain fields, **no behavior**) with constructor helpers `html()`, `json()`, `redirect()`, `not_found()`, `abort()`. A single `to_response($result): Response` lowering step the runner calls — accepts a description or a raw `Response`; anything else (incl. bare string/array) is an error, **no type-sniffing**.
-- [ ] Minimal inline router stub so one route works end-to-end.
+- [x] `public/index.php` front controller: define base paths, require `lib/bootstrap.php`, dispatch; the handler returns a **description**, the runner lowers it into a `Response` and sends it.
+- [x] `lib/bootstrap.php`: require lib files in dependency order.
+- [x] `lib/request.php`: build a `Request` from PHP superglobals (method, path, query, post, headers, raw body).
+- [x] `lib/response.php`: `Response` value object (status, headers, body) + `send()`. Immutable description objects `Html`/`Json`/`Redirect` (`final readonly class`, plain fields, **no behavior**) with constructor helpers `html()`, `json()`, `redirect()`, `not_found()`, `abort()`. A single `to_response($result): Response` lowering step the runner calls — accepts a description or a raw `Response`; anything else (incl. bare string/array) is an error, **no type-sniffing**.
+- [x] Minimal inline router stub so one route works end-to-end.
 - **Check:** `php -S localhost:8000 -t public` → visiting `/` returns `html(...)` that the runner renders and sends.
 
 ## Milestone 1 — Routing (one explicit table)
@@ -117,8 +117,14 @@ npgx/
 
 ## Milestone 10 — Scaffolding & tests
 - [ ] `npg make:route` (handler stub + routes.php entry), `npg test` (tiny assertion runner).
-- [ ] `tests/` for router, views, validation, db (SQLite), auth.
+- [~] `tests/` for router, views, validation, db (SQLite), auth.
 - **Check:** `./npg test` is green; `make:route` produces a working route.
+
+> Landed early (alongside Milestone 0): a tiny built-in test harness (`tests/harness.php` flat
+> assertions + `tests/run.php` runner, discovers `tests/*_test.php`, exits non-zero on failure).
+> Covered so far: response lowering (`to_response`/`html`/`json`/`redirect`) and
+> `request_from_globals()`. Run with `php tests/run.php`; `npg test` will shell out to it once the
+> CLI exists. Router/views/validation/db/auth tests still to come with their milestones.
 
 ## Milestone 11 — Demo app + docs
 - [ ] A small CRUD feature (e.g. notes) exercising every subsystem end-to-end.
