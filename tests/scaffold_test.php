@@ -126,7 +126,8 @@ test('make_route() types path params from the pattern (int -> int, slug/str -> s
         assert_true(str_contains($handler, "'slug' => \$slug,"), 'slug param passed to context');
 
         $view = (string) file_get_contents($dir . '/views/post_show.php');
-        assert_true(str_contains($view, '<?= e($id) ?>'), 'view echoes int param');
+        assert_true(str_contains($view, '<?= e((string) $id) ?>'), 'int param cast for strict e()');
+        assert_true(str_contains($view, '<?= e($slug) ?>'), 'string param echoed without a cast');
     } finally {
         remove_scaffold_dir($dir);
     }

@@ -306,7 +306,10 @@ function make_route_view_stub(string $handler, array $params): string
     foreach ($params as $param) {
         $phpType = route_param_php_type($param['type']);
         $docblock .= "/** @var {$phpType} \${$param['name']} */\n";
-        $lines[] = "    <p>{$param['name']}: <?= e(\${$param['name']}) ?></p>";
+        // e() is strictly typed (string); an int param must be cast or it throws
+        // at render time. Mirrors the hand-written app/views/users/show.php.
+        $expr = $phpType === 'int' ? "(string) \${$param['name']}" : "\${$param['name']}";
+        $lines[] = "    <p>{$param['name']}: <?= e({$expr}) ?></p>";
     }
 
     $paramBlock = $lines === [] ? '' : "\n" . implode("\n", $lines);
