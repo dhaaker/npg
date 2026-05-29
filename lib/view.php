@@ -41,7 +41,7 @@ function view_shared_context(): array
 
 function render_html(Html $html): string
 {
-    $templatePath = BASE_PATH . '/app/views/' . $html->template . '.php';
+    $templatePath = config('paths.views') . '/' . $html->template . '.php';
 
     if (!is_file($templatePath)) {
         throw new RuntimeException("View not found: {$html->template}");

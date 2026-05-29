@@ -7,22 +7,20 @@ declare(strict_types=1);
 // can gate on it. Run directly with: php tests/run.php [tests/some_test.php]
 
 define('BASE_PATH', dirname(__DIR__));
-define('LIB_PATH', BASE_PATH . '/lib');
 
 require BASE_PATH . '/lib/bootstrap.php';
 require __DIR__ . '/harness.php';
 require __DIR__ . '/support.php';
 
 // Tests run against a dedicated Postgres test database, configured the
-// Laravel way: bootstrap loaded .env above; here we override onto .env.testing
-// so config('db.dsn') points at the _test database for the whole suite.
+// Laravel way: boot the framework against .env.testing (instead of .env) so
+// config('db.dsn') points at the _test database for the whole suite.
 $envFile = BASE_PATH . '/.env.testing';
 if (!is_file($envFile)) {
     fwrite(STDERR, "Missing .env.testing — copy .env.testing.example and point it at your test database.\n");
     exit(2);
 }
-load_env($envFile);
-load_config(BASE_PATH . '/config.php');
+boot(BASE_PATH, $envFile);
 
 // Destructive-op safety net: the suite truncates tables, so never let it run
 // against anything but a clearly-named test database.
@@ -33,7 +31,7 @@ if (!str_contains((string) config('db.dsn'), 'test')) {
 
 // Migrate the test database once up front so tests share the real schema.
 try {
-    run_migrations(BASE_PATH . '/migrations');
+    run_migrations(config('paths.migrations'));
 } catch (Throwable $e) {
     fwrite(STDERR, "Cannot prepare test DB ({$e->getMessage()}). Create it first: createdb npg_test\n");
     exit(2);

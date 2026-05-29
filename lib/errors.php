@@ -246,5 +246,8 @@ function log_line(string $level, string $message, array $context = [], ?string $
 
 function error_log_path(): string
 {
-    return BASE_PATH . '/storage/logs/app.log';
+    // Read the log dir from config('paths.*'). Error handlers are installed only
+    // after boot() runs, so paths are set; the temp-dir fallback only matters if
+    // something logs before the app is booted.
+    return ((string) config('paths.logs', sys_get_temp_dir())) . '/app.log';
 }

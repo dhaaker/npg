@@ -7,22 +7,26 @@ declare(strict_types=1);
 // runs under any PHP server pointed at public/. This script just bundles the
 // common dev tasks behind one entry point.
 
-define('BASE_PATH', __DIR__);
-define('LIB_PATH', BASE_PATH . '/lib');
+// The CLI runs from the app root (this script lives there). It boots the
+// framework the same way the web entry does, then reads layout from
+// config('paths.*').
+$appRoot = __DIR__;
 
-require BASE_PATH . '/lib/bootstrap.php';
+require $appRoot . '/lib/bootstrap.php';
+
+boot($appRoot);
 
 $command = $argv[1] ?? '';
 
 switch ($command) {
     case 'serve':
-        $docroot = escapeshellarg(BASE_PATH . '/public');
+        $docroot = escapeshellarg($appRoot . '/public');
         fwrite(STDOUT, "Serving public/ at http://localhost:8000 (Ctrl-C to stop)\n");
         passthru('php -S localhost:8000 -t ' . $docroot, $code);
         exit($code);
 
     case 'migrate':
-        $applied = run_migrations(BASE_PATH . '/migrations');
+        $applied = run_migrations(config('paths.migrations'));
         if ($applied === []) {
             fwrite(STDOUT, "Nothing to migrate.\n");
             exit(0);
@@ -32,10 +36,70 @@ switch ($command) {
         }
         exit(0);
 
+    case 'new':
+        $target = $argv[2] ?? '';
+        if ($target === '') {
+            fwrite(STDERR, "Usage: ./npg new <dir>\n");
+            exit(2);
+        }
+
+        $targetRoot = cli_absolute_path($target);
+        try {
+            $created = scaffold_app($appRoot, $targetRoot);
+        } catch (Throwable $e) {
+            fwrite(STDERR, "Could not scaffold app: {$e->getMessage()}\n");
+            exit(1);
+        }
+
+        fwrite(STDOUT, "Created npg app at {$targetRoot}\n");
+        foreach ($created as $entry) {
+            fwrite(STDOUT, "  {$entry}\n");
+        }
+        fwrite(STDOUT, "\nNext:\n");
+        fwrite(STDOUT, "  cd {$targetRoot}\n");
+        fwrite(STDOUT, "  cp .env.example .env   # then set your DB credentials\n");
+        fwrite(STDOUT, "  ./npg migrate\n");
+        fwrite(STDOUT, "  ./npg serve\n");
+        exit(0);
+
+    case 'update':
+        $target = $argv[2] ?? '';
+        if ($target === '') {
+            fwrite(STDERR, "Usage: ./npg update <dir>\n");
+            exit(2);
+        }
+
+        $targetRoot = cli_absolute_path($target);
+        try {
+            update_framework($appRoot, $targetRoot);
+        } catch (Throwable $e) {
+            fwrite(STDERR, "Could not update framework: {$e->getMessage()}\n");
+            exit(1);
+        }
+
+        fwrite(STDOUT, "Updated lib/ in {$targetRoot} from {$appRoot}\n");
+        exit(0);
+
     default:
         fwrite(STDERR, "Usage: ./npg <command>\n\n");
         fwrite(STDERR, "Commands:\n");
-        fwrite(STDERR, "  serve     Start a dev server (php -S) with public/ as docroot\n");
-        fwrite(STDERR, "  migrate   Apply pending migrations in migrations/\n");
+        fwrite(STDERR, "  serve          Start a dev server (php -S) with public/ as docroot\n");
+        fwrite(STDERR, "  migrate        Apply pending migrations in migrations/\n");
+        fwrite(STDERR, "  new <dir>      Scaffold a new app and vendor lib/ + npg into it\n");
+        fwrite(STDERR, "  update <dir>   Re-copy this install's lib/ into an existing app\n");
         exit($command === '' ? 0 : 2);
+}
+
+/**
+ * Resolve a user-supplied path to an absolute one, relative to the current
+ * working directory (not the app root), so `./npg new myapp` lands where the
+ * user is standing.
+ */
+function cli_absolute_path(string $path): string
+{
+    if ($path === '' || $path[0] === '/') {
+        return $path;
+    }
+
+    return rtrim((string) getcwd(), '/') . '/' . $path;
 }

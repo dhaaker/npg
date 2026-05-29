@@ -16,7 +16,7 @@ npgx/
 ├── public/
 │   └── index.php          # front controller (the only web entry point)
 ├── lib/                   # the framework itself — global helper functions, one concern per file
-│   ├── bootstrap.php      # load env, config, then require the rest of lib/
+│   ├── bootstrap.php      # require the rest of lib/; boot($appRoot) loads env+config, registers paths
 │   ├── env.php            # parse .env -> env()
 │   ├── config.php         # config() over config array
 │   ├── request.php        # Request object ($method, $path, $query, $post, $headers, ...)
@@ -30,6 +30,7 @@ npgx/
 │   ├── auth.php           # sessions, csrf, password hashing, auth_* + current_user()
 │   ├── errors.php         # error/exception handler, rich debug page, structured log
 │   ├── migrate.php        # forward-only numbered .sql runner
+│   ├── scaffold.php       # CLI-only: `npg new`/`update` vendor lib/+npg into an app (no package manager)
 │   └── vendor/            # hand-vendored single-file deps (rare; meets the vendoring bar)
 ├── app/
 │   ├── handlers/          # handler functions, grouped by feature (e.g. users.php)
@@ -271,6 +272,26 @@ npgx/
 - [ ] A small CRUD feature (e.g. notes) exercising every subsystem end-to-end.
 - [ ] README quickstart; keep `AGENTS.md` in sync with what was actually built.
 - **Check:** clone → set `.env` → `./npg migrate` → `./npg serve` (or Herd at `npgx.test`) → working app, zero install step.
+
+## Reusability — vendored framework (Option B)
+*Goal: the same framework runs in any app; reuse is a file copy, not a package install.*
+- [x] Decoupled `lib/` from app layout: `lib/` no longer references `BASE_PATH` or any app-folder name. The front controller / CLI / test runner own the app root and call `boot($appRoot)` (in `lib/bootstrap.php`), which loads env + config and registers paths.
+- [x] Paths are data, not constants: `config.php` returns a `paths` block (derived from `__DIR__`); `default_paths()` + `register_paths()` merge app overrides over framework defaults; `lib/view.php` and `lib/errors.php` read `config('paths.*')`.
+- [x] `lib/scaffold.php` + `npg new <dir>` / `npg update <dir>`: vendor `lib/` + `npg` by copying. `new` scaffolds a runnable starter (home route + app-agnostic batteries) into an empty dir; `update` re-copies `lib/` into an existing app.
+- **Check:** `./npg new /tmp/app` → `cd /tmp/app` → serves `/` (200) with vendored `lib/`, zero install step; the boundary stays clean so a later split into its own repo (Option C) is trivial.
+
+> Landed: `lib/` is now layout-agnostic. `boot(string $appRoot, ?string $envPath = null)`
+> in `lib/bootstrap.php` is the single seam where an app's location enters the
+> framework — it loads `.env` (or a passed env file, used by `tests/run.php` for
+> `.env.testing`), loads `config.php`, then `register_paths()` merges the app's
+> `config('paths')` over `default_paths($appRoot)`. `lib/view.php` resolves
+> templates via `config('paths.views')` and `lib/errors.php` logs to
+> `config('paths.logs')`; neither touches `BASE_PATH` (kept only as an app-side
+> convenience in the entry points/test files). Reuse follows the framework's own
+> "vendor by copying" rule: `lib/scaffold.php` provides `copy_dir`/`vendor_framework`/
+> `scaffold_app`/`update_framework`, wired into the `npg` CLI as `new`/`update`.
+> Verified: full suite green (97 assertions) after the refactor, and a freshly
+> scaffolded app serves `/` end-to-end with no Composer/build step.
 
 ---
 

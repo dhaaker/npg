@@ -30,12 +30,15 @@ This does not mean *zero* global state — it means state is **concentrated, not
 
 ```
 public/index.php
-  -> bootstrap (load env, config, helpers)
-  -> match URL against routes (routes.php)      // one explicit table, pattern -> handler
-  -> run middleware stack (middleware.php) around the handler
+  -> require lib/bootstrap.php (load framework helpers)
+  -> boot($appRoot)                              // load env + config, register paths
+  -> match URL against routes (config('paths.routes'))  // one explicit table, pattern -> handler
+  -> run middleware stack (config('paths.middleware')) around the handler
   -> handler($request, ...$pathParams) returns a response description
   -> runner lowers it into a Response and sends it (status, headers, body)
 ```
+
+The front controller owns the **app root** (`$appRoot = dirname(__DIR__)`) and passes it to `boot($appRoot)`. `boot()` is the one place the app's location enters the framework: it loads `.env` and `config.php` from the root and registers the filesystem layout (see *Config & paths* below). `lib/` itself contains **no** app-folder names or `BASE_PATH` — the same vendored `lib/` runs in any app.
 
 ### Routing — one explicit table, no method dispatch
 Routes live in a single explicit table (`routes.php`). A URL pattern maps to a handler. Path converters bind segments to handler arguments. **Routing does NOT branch on HTTP method** — one handler owns a URL and inspects `$request->method` itself if it cares (KISS).
@@ -97,8 +100,18 @@ Postgres is the first-class target (`pdo_pgsql`), but helpers stay portable PDO 
 
 The `query*` helpers reach a **single shared PDO connection** lazily created on first use and held in a bootstrap-owned singleton (see the north star note on concentrated state). This is the one bit of "spooky" global the data layer relies on — it is intentional, and it is the *only* such global here. There is no per-call connection injection. Tests run against a dedicated Postgres test database (the Laravel way): the test runner loads `.env.testing` so the configured DSN points at a `<db>_test` database, migrates it once, and resets state between tests by truncating tables.
 
-### Config & secrets — `.env` + `config.php`
+### Config & paths — `.env` + `config.php`
 `.env` holds secrets/per-environment values, parsed at boot. `config.php` returns a plain array (and may read from `env()`). Access via `config('db.dsn')` and `env('APP_DEBUG')`.
+
+`config.php` also returns a `paths` block — the app's explicit filesystem map (`views`, `handlers`, `routes`, `middleware`, `migrations`, `logs`, ...), derived from `__DIR__` since `config.php` sits at the app root. The framework reads layout **only** through `config('paths.*')`, so `lib/` never assumes a folder name. `boot()` merges these on top of `default_paths($appRoot)` (defined in `lib/bootstrap.php`), so an app can omit a key and still boot, or override one to relocate a folder. This is what lets the same `lib/` be vendored into any app — the app's layout is data in its own `config.php`, not a constant baked into the framework.
+
+### Reuse — vendored framework, no package manager
+npg is reused the same way it vendors third-party deps: **by copying files, never via Composer.** The framework unit is `lib/` + the `npg` CLI; the app is everything else (`public/`, `app/`, `config.php`, `routes.php`, `middleware.php`, `migrations/`, `.env*`, `storage/`). The current repo doubles as the framework's home **and** its reference/demo app, so the framework is always exercised against something real.
+
+- `./npg new <dir>` scaffolds a fresh, runnable app and vendors this install's `lib/` + `npg` into it (a single home route, plus the app-agnostic batteries). Zero install step — `cp .env.example .env`, `./npg migrate`, `./npg serve`.
+- `./npg update <dir>` re-copies this install's `lib/` over an existing app's `lib/` (the "update the framework" path); the app's own code is untouched.
+
+The boundary is kept clean (no app assumptions in `lib/`) precisely so the framework could later graduate to its own repo without further untangling.
 
 ### Middleware — one ordered list
 `middleware.php` returns an ordered array of middleware run around every handler (onion model). Universal concerns only (session, CSRF, attaching the current user). Per-route concerns are explicit guards inside handlers (e.g. `require_login($request)`), not hidden middleware.
@@ -121,6 +134,8 @@ A single entry script. **Nothing it does is required for the app to run** — th
 ```
 ./npg serve          # php -S dev server with public/ as docroot
 ./npg migrate        # apply pending migrations
+./npg new <dir>      # scaffold a new app, vendoring lib/ + npg into it
+./npg update <dir>   # re-copy this install's lib/ into an existing app
 ./npg make:route     # scaffold a handler + routes.php entry
 ./npg test           # run the test suite
 ```
