@@ -2,25 +2,29 @@
 
 declare(strict_types=1);
 
-// Test runner: loads the framework + harness, then includes every *_test.php
-// file in this directory. Exits non-zero if any test failed so CI / `./npg test`
-// can gate on it. Run directly with: php tests/run.php [tests/some_test.php]
+// Framework test runner. Spawned as a fresh process (by `./npg test`, or run
+// directly with `php lib/npg/run_tests.php [tests/some_test.php]`) so it boots
+// cleanly against .env.testing. It lives in the framework (lib/npg/) and is
+// vendored into every app, so apps never own or edit it — their tests/ holds
+// only *_test.php files. Exits non-zero if any test failed so CI can gate on it.
 
-define('BASE_PATH', dirname(__DIR__));
+$appRoot = dirname(__DIR__, 2);
 
-require BASE_PATH . '/lib/npg/bootstrap.php';
-require __DIR__ . '/harness.php';
-require __DIR__ . '/support.php';
+define('BASE_PATH', $appRoot);
+
+require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/harness.php';
+require_once __DIR__ . '/support.php';
 
 // Tests run against a dedicated Postgres test database, configured the
 // Laravel way: boot the framework against .env.testing (instead of .env) so
 // config('db.dsn') points at the _test database for the whole suite.
-$envFile = BASE_PATH . '/.env.testing';
+$envFile = $appRoot . '/.env.testing';
 if (!is_file($envFile)) {
     fwrite(STDERR, "Missing .env.testing — copy .env.testing.example and point it at your test database.\n");
     exit(2);
 }
-boot(BASE_PATH, $envFile);
+boot($appRoot, $envFile);
 
 // Destructive-op safety net: the suite truncates tables, so never let it run
 // against anything but a clearly-named test database.
@@ -33,13 +37,13 @@ if (!str_contains((string) config('db.dsn'), 'test')) {
 try {
     run_migrations(config('paths.migrations'));
 } catch (Throwable $e) {
-    fwrite(STDERR, "Cannot prepare test DB ({$e->getMessage()}). Create it first: createdb npg_test\n");
+    fwrite(STDERR, "Cannot prepare test DB ({$e->getMessage()}). Create it first: createdb <db>_test\n");
     exit(2);
 }
 
 $files = array_slice($argv, 1);
 if ($files === []) {
-    $files = glob(__DIR__ . '/*_test.php') ?: [];
+    $files = glob(config('paths.tests') . '/*_test.php') ?: [];
     sort($files);
 }
 

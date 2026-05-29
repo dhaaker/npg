@@ -53,6 +53,7 @@ function default_paths(string $appRoot): array
         'routes' => $appRoot . '/routes.php',
         'middleware' => $appRoot . '/middleware.php',
         'migrations' => $appRoot . '/migrations',
+        'tests' => $appRoot . '/tests',
         'storage' => $appRoot . '/storage',
         'logs' => $appRoot . '/storage/logs',
     ];

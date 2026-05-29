@@ -31,6 +31,7 @@ return [
         'routes' => $root . '/routes.php',
         'middleware' => $root . '/middleware.php',
         'migrations' => $root . '/migrations',
+        'tests' => $root . '/tests',
         'storage' => $root . '/storage',
         'logs' => $root . '/storage/logs',
     ],

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// Shared test helpers. Loaded by run.php before any *_test.php file so every
-// test can rely on these being defined exactly once.
+// Shared test helpers. Loaded by run_tests.php before any *_test.php file so
+// every test can rely on these being defined exactly once.
 
 // Reset the test database to a clean slate: truncate every table in the public
 // schema except `migrations` (so the DB stays migrated), resetting identity

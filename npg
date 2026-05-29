@@ -36,6 +36,17 @@ switch ($command) {
         }
         exit(0);
 
+    case 'test':
+        // Shell out to the framework runner (lib/npg/run_tests.php) — a fresh
+        // process that boots itself against .env.testing. Any extra args are
+        // passed through as specific test files.
+        $cmd = 'php ' . escapeshellarg($appRoot . '/lib/npg/run_tests.php');
+        foreach (array_slice($argv, 2) as $file) {
+            $cmd .= ' ' . escapeshellarg($file);
+        }
+        passthru($cmd, $code);
+        exit($code);
+
     case 'new':
         $target = $argv[2] ?? '';
         if ($target === '') {
@@ -57,9 +68,10 @@ switch ($command) {
         }
         fwrite(STDOUT, "\nNext:\n");
         fwrite(STDOUT, "  cd {$targetRoot}\n");
-        fwrite(STDOUT, "  cp .env.example .env   # then set your DB credentials\n");
+        fwrite(STDOUT, "  cp .env.example .env                 # then set your DB credentials\n");
         fwrite(STDOUT, "  ./npg migrate\n");
         fwrite(STDOUT, "  ./npg serve\n");
+        fwrite(STDOUT, "  cp .env.testing.example .env.testing # for tests, then: ./npg test\n");
         exit(0);
 
     case 'update':
@@ -83,10 +95,11 @@ switch ($command) {
     default:
         fwrite(STDERR, "Usage: ./npg <command>\n\n");
         fwrite(STDERR, "Commands:\n");
-        fwrite(STDERR, "  serve          Start a dev server (php -S) with public/ as docroot\n");
-        fwrite(STDERR, "  migrate        Apply pending migrations in migrations/\n");
-        fwrite(STDERR, "  new <dir>      Scaffold a new app and vendor lib/ + npg into it\n");
-        fwrite(STDERR, "  update <dir>   Re-copy this install's lib/ into an existing app\n");
+        fwrite(STDERR, "  serve            Start a dev server (php -S) with public/ as docroot\n");
+        fwrite(STDERR, "  migrate          Apply pending migrations in migrations/\n");
+        fwrite(STDERR, "  test [files...]  Run the test suite (lib/npg/run_tests.php), optionally specific files\n");
+        fwrite(STDERR, "  new <dir>        Scaffold a new app and vendor lib/npg/ + npg into it\n");
+        fwrite(STDERR, "  update <dir>     Re-copy this install's lib/npg/ into an existing app\n");
         exit($command === '' ? 0 : 2);
 }
 

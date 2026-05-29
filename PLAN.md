@@ -31,7 +31,10 @@ npgx/
 │   │   ├── auth.php       # sessions, csrf, password hashing, auth_* + current_user()
 │   │   ├── errors.php     # error/exception handler, rich debug page, structured log
 │   │   ├── migrate.php    # forward-only numbered .sql runner
-│   │   └── scaffold.php   # CLI-only: `npg new`/`update` vendor lib/npg/ + npg into an app (no package manager)
+│   │   ├── scaffold.php   # CLI-only: `npg new`/`update` vendor lib/npg/ + npg into an app (no package manager)
+│   │   ├── harness.php    # test-only: test()/assert_* flat-assertion DSL (loaded by run_tests.php)
+│   │   ├── support.php    # test-only: fresh_database() truncate-between-tests helper
+│   │   └── run_tests.php  # test runner entry — spawned by `npg test`, boots .env.testing, runs tests/*_test.php
 │   └── vendor/            # hand-vendored single-file third-party deps (rare; meets the vendoring bar)
 ├── app/
 │   ├── handlers/          # handler functions, grouped by feature (e.g. users.php)
@@ -42,7 +45,7 @@ npgx/
 ├── migrations/            # 001_*.sql, 002_*.sql ...
 ├── storage/
 │   └── logs/              # structured logs (gitignored)
-├── tests/                 # plain PHP assertion files
+├── tests/                 # plain PHP assertion files (*_test.php only; runner/harness live in lib/npg/)
 ├── .env                   # secrets / per-env (gitignored)
 ├── .env.example           # committed template
 ├── npg                    # CLI entry script (chmod +x)
@@ -243,29 +246,33 @@ npgx/
 > pass-through branches).
 
 ## Milestone 10 — Scaffolding & tests
-- [ ] `npg make:route` (handler stub + routes.php entry), `npg test` (tiny assertion runner).
+- [ ] `npg make:route` (handler stub + routes.php entry).
+- [x] `npg test` (tiny assertion runner) — shells out to the framework runner `lib/npg/run_tests.php`, forwards optional file args.
 - [x] `tests/` for router, views, validation (Milestone 9), db (dedicated `_test` Postgres DB), auth (router covered in Milestone 1).
 - **Check:** `./npg test` is green; `make:route` produces a working route.
 
-> Landed early (alongside Milestone 0): a tiny built-in test harness (`tests/harness.php` flat
-> assertions + `tests/run.php` runner, discovers `tests/*_test.php`, exits non-zero on failure).
+> Landed early (alongside Milestone 0): a tiny built-in test harness (flat
+> assertions + a runner that discovers `tests/*_test.php` and exits non-zero on
+> failure). The harness, support, and runner were later relocated into the
+> framework (`lib/npg/harness.php`, `lib/npg/support.php`, `lib/npg/run_tests.php`)
+> so an app's `tests/` holds only its own `*_test.php` files.
 > Covered so far: response lowering (`to_response`/`html`/`json`/`redirect`),
 > `request_from_globals()`, and routing (`path`/`compile_pattern`/`match_route`/`dispatch`).
-> Run with `php tests/run.php`; `npg test` will shell out to it once the CLI exists.
+> Run with `./npg test` (or directly: `php lib/npg/run_tests.php`).
 > Views/validation/auth tests landed with their milestones; `tests/session_test.php`
 > closes the last gap by covering `lib/session.php` directly — `csrf_field()`,
 > `csrf_middleware` (safe-method pass-through, `abort(419)` on a missing/forged
 > token, pass on a valid one), `session_middleware`, flash accumulation per key,
 > the `flash_errors`/`flash_old` → `errors()`/`old()` rotation, and
 > `reset_session()` clearing. The whole suite (97 assertions) is green. The
-> remaining scaffolding — `npg make:route` and the `npg test` subcommand — is the
-> only open part of this milestone.
+> `npg test` subcommand has since landed (shells out to `lib/npg/run_tests.php`);
+> `npg make:route` is the only open part of this milestone.
 >
 > Database tests run against a dedicated Postgres test database, the Laravel way:
-> `tests/run.php` loads `.env.testing` (instead of `.env`) so `config('db.dsn')`
+> `lib/npg/run_tests.php` loads `.env.testing` (instead of `.env`) so `config('db.dsn')`
 > points at the `_test` database, refuses to run unless the db name contains
 > `test`, then migrates it once up front. Each DB test calls `fresh_database()`
-> (`tests/support.php`) to TRUNCATE every table except `migrations` and start
+> (`lib/npg/support.php`) to TRUNCATE every table except `migrations` and start
 > clean. Set up locally with `createdb npg_test` and a `.env.testing` copied from
 > `.env.testing.example`.
 
@@ -279,12 +286,13 @@ npgx/
 - [x] Decoupled `lib/npg/` from app layout: it no longer references `BASE_PATH` or any app-folder name. The front controller / CLI / test runner own the app root and call `boot($appRoot)` (in `lib/npg/bootstrap.php`), which loads env + config and registers paths.
 - [x] Paths are data, not constants: `config.php` returns a `paths` block (derived from `__DIR__`); `default_paths()` + `register_paths()` merge app overrides over framework defaults; `lib/npg/view.php` and `lib/npg/errors.php` read `config('paths.*')`.
 - [x] Framework lives under `lib/npg/` (so `lib/vendor/` stays free for hand-vendored third-party deps). `lib/npg/scaffold.php` + `npg new <dir>` / `npg update <dir>`: vendor `lib/npg/` + `npg` by copying. `new` scaffolds a runnable starter (home route + app-agnostic batteries) into an empty dir; `update` re-copies `lib/npg/` into an existing app.
+- [x] `npg new` scaffolds a `tests/` holding only an example handler test (`tests/home_test.php`, asserting `home()` returns the expected `Html`) plus `.env.testing.example`; the DB-backed runner + harness + `fresh_database()` ship inside the vendored `lib/npg/` (`run_tests.php`, `harness.php`, `support.php`), so apps never own or edit them. `./npg test` runs the suite. Migrations are not copied — a new app starts with an empty `migrations/`.
 - **Check:** `./npg new /tmp/app` → `cd /tmp/app` → serves `/` (200) with vendored `lib/npg/`, zero install step; the boundary stays clean so a later split into its own repo (Option C) is trivial.
 
 > Landed: `lib/npg/` is now layout-agnostic. `boot(string $appRoot, ?string $envPath = null)`
 > in `lib/npg/bootstrap.php` is the single seam where an app's location enters the
-> framework — it loads `.env` (or a passed env file, used by `tests/run.php` for
-> `.env.testing`), loads `config.php`, then `register_paths()` merges the app's
+> framework — it loads `.env` (or a passed env file, used by `lib/npg/run_tests.php`
+> for `.env.testing`), loads `config.php`, then `register_paths()` merges the app's
 > `config('paths')` over `default_paths($appRoot)`. `lib/npg/view.php` resolves
 > templates via `config('paths.views')` and `lib/npg/errors.php` logs to
 > `config('paths.logs')`; neither touches `BASE_PATH` (kept only as an app-side

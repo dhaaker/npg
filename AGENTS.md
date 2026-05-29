@@ -108,7 +108,7 @@ The `query*` helpers reach a **single shared PDO connection** lazily created on 
 ### Reuse — vendored framework, no package manager
 npg is reused the same way it vendors third-party deps: **by copying files, never via Composer.** The framework unit is `lib/npg/` + the `npg` CLI; the app is everything else (`public/`, `app/`, `config.php`, `routes.php`, `middleware.php`, `migrations/`, `.env*`, `storage/`). The current repo doubles as the framework's home **and** its reference/demo app, so the framework is always exercised against something real.
 
-- `./npg new <dir>` scaffolds a fresh, runnable app and vendors this install's `lib/npg/` + `npg` into it (a single home route, plus the app-agnostic batteries). Zero install step — `cp .env.example .env`, `./npg migrate`, `./npg serve`.
+- `./npg new <dir>` scaffolds a fresh, runnable app and vendors this install's `lib/npg/` + `npg` into it (a single home route, plus the app-agnostic batteries, and a `tests/` holding just an example handler test for `home` + `.env.testing.example`). The test runner/harness/`fresh_database()` live in the vendored `lib/npg/` (`run_tests.php`, `harness.php`, `support.php`), so the app never owns them. Zero install step — `cp .env.example .env`, `./npg migrate`, `./npg serve`; `cp .env.testing.example .env.testing` then `./npg test`.
 - `./npg update <dir>` re-copies this install's `lib/npg/` over an existing app's `lib/npg/` (the "update the framework" path); the app's own code and any `lib/vendor/` deps are untouched.
 
 The boundary is kept clean (no app assumptions in `lib/npg/`) precisely so the framework could later graduate to its own repo without further untangling.

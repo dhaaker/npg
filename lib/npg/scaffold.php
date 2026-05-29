@@ -89,8 +89,11 @@ function vendor_framework(string $sourceRoot, string $targetRoot): void
 
 /**
  * Files copied verbatim from the source app because they are app-agnostic
- * batteries (generic entry point, config, middleware list, error views, the
- * users migration, dotfiles). Paths are relative to the app root.
+ * batteries (generic entry point, config, middleware list, error views,
+ * dotfiles). Paths are relative to the app root. The test runner/harness/support
+ * are NOT here — they live in lib/npg/ and ride along via vendor_framework().
+ * Migrations are NOT copied — a new app starts with an empty migrations/ and
+ * writes its own schema.
  *
  * @return list<string>
  */
@@ -101,8 +104,8 @@ function scaffold_copied_files(): array
         'config.php',
         'middleware.php',
         '.env.example',
+        '.env.testing.example',
         '.gitignore',
-        'migrations/001_create_users.sql',
         'app/views/_404.php',
         'app/views/_abort.php',
     ];
@@ -127,16 +130,22 @@ function scaffold_app(string $sourceRoot, string $targetRoot): array
         copy_file($sourceRoot . '/' . $relative, $targetRoot . '/' . $relative);
     }
 
-    // Starter app code (a single home route) — generated, not copied, so a new
-    // app starts minimal instead of inheriting the demo's handlers/views.
+    // Starter app code (a single home route + an example test) — generated, not
+    // copied, so a new app starts minimal instead of inheriting the demo's
+    // handlers/views. The migrations/ dir starts empty (the app writes its own
+    // schema); a .gitkeep keeps it in version control and makes `npg migrate` a
+    // clean no-op.
     write_new_file($targetRoot . '/routes.php', scaffold_routes_stub());
     write_new_file($targetRoot . '/app/handlers/home.php', scaffold_home_handler_stub());
     write_new_file($targetRoot . '/app/views/home.php', scaffold_home_view_stub());
+    write_new_file($targetRoot . '/tests/home_test.php', scaffold_home_test_stub());
+    write_new_file($targetRoot . '/migrations/.gitkeep', '');
     write_new_file($targetRoot . '/storage/logs/.gitkeep', '');
 
     return [
         'lib/', 'npg', 'public/index.php', 'config.php', 'routes.php',
-        'middleware.php', 'app/', 'migrations/', 'storage/logs/', '.env.example',
+        'middleware.php', 'app/', 'migrations/', 'storage/logs/', 'tests/',
+        '.env.example',
     ];
 }
 
@@ -210,6 +219,30 @@ declare(strict_types=1);
     <p>Edit <code>app/views/home.php</code> and refresh — nothing to compile.</p>
 </body>
 </html>
+
+PHP;
+}
+
+function scaffold_home_test_stub(): string
+{
+    return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+// Example test. The runner (lib/npg/run_tests.php) loads the framework but not
+// your app/handlers/, so a handler test requires the file it exercises. A handler
+// returns a response *description*, so the test asserts on that — no HTTP, no
+// rendering, no DB.
+require_once config('paths.handlers') . '/home.php';
+
+test('home() describes the home view with the app name', function () {
+    $home = home(new Request('GET', '/', [], [], [], ''));
+
+    assert_true($home instanceof Html);
+    assert_same('home', $home->template);
+    assert_same(config('app.name'), $home->context['name']);
+});
 
 PHP;
 }
