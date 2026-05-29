@@ -70,6 +70,11 @@ test('csrf_middleware calls the handler for unsafe methods with a valid token', 
         csrf_middleware(session_request('POST', [], ['X-Csrf-Token' => $token]), $next),
         'matching header should pass',
     );
+    assert_same(
+        'reached',
+        csrf_middleware(session_request('POST', [], ['x-csrf-token' => $token]), $next),
+        'header match is case-insensitive (HTTP header names are case-insensitive)',
+    );
 });
 
 test('session_middleware invokes the handler and returns its result', function () {

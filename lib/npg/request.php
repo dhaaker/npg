@@ -37,6 +37,24 @@ function request_from_globals(): Request
     );
 }
 
+/**
+ * Case-insensitive header lookup. HTTP header names are case-insensitive
+ * (RFC 9110), but $request->headers is a plain array keyed by whatever casing
+ * the client sent — getallheaders() does not normalise it — so a literal
+ * $request->headers['X-Csrf-Token'] would miss a client that sent
+ * x-csrf-token. Compare names case-insensitively here so every reader agrees.
+ */
+function request_header(Request $request, string $name, ?string $default = null): ?string
+{
+    foreach ($request->headers as $key => $value) {
+        if (strcasecmp((string) $key, $name) === 0) {
+            return is_string($value) ? $value : (string) $value;
+        }
+    }
+
+    return $default;
+}
+
 function request_headers_from_server(): array
 {
     if (function_exists('getallheaders')) {

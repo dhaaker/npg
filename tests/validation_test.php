@@ -115,9 +115,9 @@ test('validation_middleware returns a 422 JSON body for API clients', function (
 
     $next = fn (Request $request) => validate($request->post, ['email' => 'required|email']);
 
-    $result = validation_middleware(valid_request(['Accept' => 'application/json']), $next);
+    $result = validation_middleware(valid_request(['accept' => 'application/json']), $next);
 
-    assert_true($result instanceof Json, 'API clients should get a JSON description');
+    assert_true($result instanceof Json, 'API clients should get a JSON description (Accept match is case-insensitive)');
     assert_same(422, $result->status);
     assert_true(isset($result->data['errors']['email']), 'errors should be in the JSON body');
 });

@@ -146,7 +146,7 @@ function csrf_verify(Request $request): bool
         return false;
     }
 
-    $submitted = $request->post['_csrf'] ?? $request->headers['X-Csrf-Token'] ?? '';
+    $submitted = $request->post['_csrf'] ?? request_header($request, 'X-Csrf-Token') ?? '';
     if (!is_string($submitted) || $submitted === '') {
         return false;
     }

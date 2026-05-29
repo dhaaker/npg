@@ -86,6 +86,22 @@ test('request_headers_from_server() includes CONTENT_TYPE and CONTENT_LENGTH (no
     }
 });
 
+test('request_header() finds a header regardless of casing and falls back to the default', function () {
+    $request = new Request(
+        method: 'POST',
+        path: '/',
+        query: [],
+        post: [],
+        headers: ['x-csrf-token' => 'tok', 'ACCEPT' => 'application/json'],
+        body: '',
+    );
+
+    assert_same('tok', request_header($request, 'X-Csrf-Token'), 'lowercase header name matches the canonical lookup');
+    assert_same('application/json', request_header($request, 'accept'), 'uppercase stored name matches a lowercase lookup');
+    assert_same(null, request_header($request, 'X-Missing'), 'missing header returns null by default');
+    assert_same('', request_header($request, 'X-Missing', ''), 'missing header returns the supplied default');
+});
+
 test('request_headers_from_server() skips non-header server vars', function () {
     $saved = $_SERVER;
 

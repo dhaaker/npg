@@ -142,8 +142,8 @@ function validation_middleware(Request $request, callable $next): mixed
     try {
         return $next($request);
     } catch (ValidationException $e) {
-        $accept = $request->headers['Accept'] ?? '';
-        if (is_string($accept) && str_contains($accept, 'application/json')) {
+        $accept = request_header($request, 'Accept', '');
+        if (str_contains($accept, 'application/json')) {
             return json(['errors' => $e->errors], 422);
         }
 
