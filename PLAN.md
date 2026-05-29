@@ -242,7 +242,7 @@ npgx/
 
 ## Milestone 10 — Scaffolding & tests
 - [ ] `npg make:route` (handler stub + routes.php entry), `npg test` (tiny assertion runner).
-- [~] `tests/` for router, views, validation (Milestone 9), db (dedicated `_test` Postgres DB), auth (router covered in Milestone 1).
+- [x] `tests/` for router, views, validation (Milestone 9), db (dedicated `_test` Postgres DB), auth (router covered in Milestone 1).
 - **Check:** `./npg test` is green; `make:route` produces a working route.
 
 > Landed early (alongside Milestone 0): a tiny built-in test harness (`tests/harness.php` flat
@@ -250,7 +250,14 @@ npgx/
 > Covered so far: response lowering (`to_response`/`html`/`json`/`redirect`),
 > `request_from_globals()`, and routing (`path`/`compile_pattern`/`match_route`/`dispatch`).
 > Run with `php tests/run.php`; `npg test` will shell out to it once the CLI exists.
-> Views/validation/auth tests still to come with their milestones.
+> Views/validation/auth tests landed with their milestones; `tests/session_test.php`
+> closes the last gap by covering `lib/session.php` directly — `csrf_field()`,
+> `csrf_middleware` (safe-method pass-through, `abort(419)` on a missing/forged
+> token, pass on a valid one), `session_middleware`, flash accumulation per key,
+> the `flash_errors`/`flash_old` → `errors()`/`old()` rotation, and
+> `reset_session()` clearing. The whole suite (97 assertions) is green. The
+> remaining scaffolding — `npg make:route` and the `npg test` subcommand — is the
+> only open part of this milestone.
 >
 > Database tests run against a dedicated Postgres test database, the Laravel way:
 > `tests/run.php` loads `.env.testing` (instead of `.env`) so `config('db.dsn')`
