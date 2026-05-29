@@ -73,13 +73,14 @@ function write_new_file(string $path, string $contents): void
 }
 
 /**
- * Vendor the framework into an app: copy lib/ and the npg CLI from $sourceRoot
- * into $targetRoot (npg made executable). This is the whole "install" — no
- * package manager, just files.
+ * Vendor the framework into an app: copy lib/npg/ and the npg CLI from
+ * $sourceRoot into $targetRoot (npg made executable). The framework lives under
+ * lib/npg/ so lib/vendor/ stays free for hand-vendored third-party deps. This
+ * is the whole "install" — no package manager, just files.
  */
 function vendor_framework(string $sourceRoot, string $targetRoot): void
 {
-    copy_dir($sourceRoot . '/lib', $targetRoot . '/lib');
+    copy_dir($sourceRoot . '/lib/npg', $targetRoot . '/lib/npg');
 
     if (copy_file($sourceRoot . '/npg', $targetRoot . '/npg')) {
         chmod($targetRoot . '/npg', 0755);
@@ -140,9 +141,9 @@ function scaffold_app(string $sourceRoot, string $targetRoot): array
 }
 
 /**
- * Re-copy the framework (lib/) from $sourceRoot into an existing app at
- * $targetRoot — the "update the framework" story. The app's own code is left
- * untouched.
+ * Re-copy the framework (lib/npg/) from $sourceRoot into an existing app at
+ * $targetRoot — the "update the framework" story. The app's own code (and any
+ * lib/vendor/ deps) is left untouched.
  */
 function update_framework(string $sourceRoot, string $targetRoot): void
 {
@@ -150,7 +151,7 @@ function update_framework(string $sourceRoot, string $targetRoot): void
         throw new RuntimeException("Not an npg app (no config.php): {$targetRoot}");
     }
 
-    copy_dir($sourceRoot . '/lib', $targetRoot . '/lib');
+    copy_dir($sourceRoot . '/lib/npg', $targetRoot . '/lib/npg');
 }
 
 function scaffold_routes_stub(): string

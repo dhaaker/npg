@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 define('BASE_PATH', dirname(__DIR__));
 
-require BASE_PATH . '/lib/bootstrap.php';
+require BASE_PATH . '/lib/npg/bootstrap.php';
 require __DIR__ . '/harness.php';
 require __DIR__ . '/support.php';
 

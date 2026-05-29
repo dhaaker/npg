@@ -12,7 +12,7 @@ declare(strict_types=1);
 // config('paths.*').
 $appRoot = __DIR__;
 
-require $appRoot . '/lib/bootstrap.php';
+require $appRoot . '/lib/npg/bootstrap.php';
 
 boot($appRoot);
 

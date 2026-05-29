@@ -7,7 +7,7 @@ declare(strict_types=1);
 // the app root.
 $appRoot = dirname(__DIR__);
 
-require $appRoot . '/lib/bootstrap.php';
+require $appRoot . '/lib/npg/bootstrap.php';
 
 boot($appRoot);
 
