@@ -20,5 +20,12 @@ declare(strict_types=1);
 //
 //         return $result;
 //     }
+//
+// session_middleware must come before csrf_middleware (CSRF reads the session)
+// and before any handler that calls current_user(); both are defined in
+// lib/session.php.
 
-return [];
+return [
+    'session_middleware',
+    'csrf_middleware',
+];

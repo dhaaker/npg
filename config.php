@@ -14,4 +14,8 @@ return [
         'user' => env('DB_USER', ''),
         'password' => env('DB_PASSWORD', ''),
     ],
+    'session' => [
+        'name' => env('SESSION_NAME', 'npg_session'),
+        'lifetime' => (int) env('SESSION_LIFETIME', '0'),
+    ],
 ];

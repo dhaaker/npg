@@ -167,12 +167,45 @@ npgx/
 > debug page message/file/last-SQL, generic-page no-leak, JSONL append/parse).
 
 ## Milestone 8 — Auth (full batteries)
-- [ ] Sessions (secure cookie settings) as middleware.
-- [ ] CSRF: token in session, `csrf_field()`, verification middleware for unsafe methods.
-- [ ] `auth_attempt($email,$pw)`, `auth_login($user)`, `logout()`, `current_user()`, `require_login($req)`.
-- [ ] Password hashing wrappers (`password_hash`/`verify`).
-- [ ] Migration for users; example login/logout handlers + views.
+- [x] Sessions (secure cookie settings) as middleware.
+- [x] CSRF: token in session, `csrf_field()`, verification middleware for unsafe methods.
+- [x] `auth_attempt($email,$pw)`, `auth_login($user)`, `logout()`, `current_user()`, `require_login($req)`.
+- [x] Password hashing wrappers (`password_hash`/`verify`).
+- [x] Migration for users; example login/logout handlers + views.
 - **Check:** register → login → see current_user() → logout works; CSRF blocks forged POST.
+
+> Split into `lib/session.php` + `lib/auth.php` (one responsibility per file).
+> The session is the second bootstrap-owned singleton (after the DB connection),
+> reached only through `lib/session.php`: `start_session()` (secure cookie
+> params — `httponly`, `samesite=Lax`, `secure` when `app.url` is https — driven
+> by a new `config('session.*')` block), `flash`/`flashes`/`flash_rotate` (a
+> flash set before a `redirect()` survives exactly one request via a
+> request-scoped `$GLOBALS['__npg_flash']`), and the CSRF token store
+> (`csrf_token`, `csrf_field`, `csrf_verify` with `hash_equals`). Two
+> framework-owned middleware live here and are listed by name in the repo-root
+> `middleware.php`: `session_middleware` (outermost) then `csrf_middleware`
+> (rejects unsafe-method requests with `abort(419)` on a missing/forged token).
+> `lib/auth.php` holds the flow over the existing `users` table:
+> `hash_password`/`verify_password` (PASSWORD_DEFAULT), `create_user` (INSERT …
+> RETURNING), `auth_attempt` (returns the row without `password_hash`),
+> `auth_login` (regenerates the session id), `logout`, `current_user` (reads the
+> session, cached per request — no request arg), and `require_login($request)`
+> (returns a `Redirect` to `/login` or null). The deferred renderer now merges
+> `view_shared_context()` (current user, CSRF token, flashes, app config) under
+> the handler's own context — computed only when a session is active, so
+> session-less direct renders (and `view_test.php`) are untouched. No new
+> migration: `001_create_users.sql` already suffices and PHP file sessions need
+> no table. Example `app/handlers/auth.php` — page handlers are `auth_`-prefixed
+> (`auth_register`/`auth_signin`/`auth_logout`; `auth_signin` rather than
+> `auth_login` to avoid colliding with the `auth_login()` helper) — plus the
+> login-protected `dashboard` handler in its own `app/handlers/dashboard.php`, and
+> standalone `auth/register`, `auth/signin`, and `dashboard` views. Covered by
+> `tests/auth_test.php` (hashing, `auth_attempt` success/failure, CSRF
+> pass/mismatch, login→`current_user`→logout, `require_login` guard, flash
+> rotation) — tests use a `reset_session()` seam (named to avoid the PHP builtin
+> `session_reset()`) so the suite needs no real cookie-backed session. Verified
+> end-to-end over `php -S`: register→dashboard (302), forged POST→419,
+> logout→redirect, logged-out dashboard→`/login`.
 
 ## Milestone 9 — Validation
 - [ ] `lib/validation.php`: `validate($input, $rules)`; rules `required|email|max:N|min:N|int|in:a,b|confirmed` (extensible).
