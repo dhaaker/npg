@@ -75,10 +75,16 @@ npgx/
 - **Check:** `config()`/`env()` return expected values; missing keys behave sanely.
 
 ## Milestone 3 — Database (Postgres-first, raw SQL)
-- [ ] `lib/db.php`: a **single bootstrap-owned PDO connection**, created lazily on first use from `config('db.dsn')`, with sane attributes (exceptions, assoc fetch). This is the one deliberate stateful global in the data layer — no per-call connection injection.
-- [ ] `query($sql, $params)`, `query_one()`, `query_all()`, `last_insert_id()`, `tx(callable)`.
-- [ ] Capture **last executed SQL + params** in a global for the debug page.
+- [x] `lib/db.php`: a **single bootstrap-owned PDO connection**, created lazily on first use from `config('db.dsn')`, with sane attributes (exceptions, assoc fetch). This is the one deliberate stateful global in the data layer — no per-call connection injection.
+- [x] `query($sql, $params)`, `query_one()`, `query_all()`, `last_insert_id()`, `tx(callable)`.
+- [x] Capture **last executed SQL + params** in a global for the debug page.
 - **Check:** against local Postgres (`npgx` db) a SELECT round-trips to an array; tests swap the DSN to SQLite before the first query.
+
+> Landed in `lib/db.php` (required from `bootstrap.php`). Helpers: `db()` (lazy
+> connection), `query`/`query_one`/`query_all`, `last_insert_id`, `tx`, plus a
+> shared `db_execute()` that captures the last SQL+params (exposed via
+> `last_sql()` for the Milestone 7 debug page) and `db_reset()` as the test seam
+> for swapping the DSN. Covered by `tests/db_test.php` against in-memory SQLite.
 
 ## Milestone 4 — Migrations + CLI seed
 - [ ] `lib/migrate.php`: ensure `migrations` table; apply un-applied `migrations/NNN_*.sql` in order; record each.
