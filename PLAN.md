@@ -105,10 +105,22 @@ npgx/
 > Milestone 10).
 
 ## Milestone 5 — Views (plain PHP, no engine, deferred render)
-- [ ] `html($template, $context = [], $status = 200)` returns an `Html` description — it does **not** render on the spot.
-- [ ] `lib/view.php`: the renderer the runner calls during lowering — extracts `Html.context` into scope, `include`s `app/views/$template.php`, captures output into the `Response` body. Rendering lives here / in the runner, never as a method on `Html`. This single deferred step is also where layout, flash messages, and CSRF token get injected into the context.
+- [x] `html($template, $context = [], $status = 200)` returns an `Html` description — it does **not** render on the spot.
+- [x] `lib/view.php`: the renderer the runner calls during lowering — extracts `Html.context` into scope, `include`s `app/views/$template.php`, captures output into the `Response` body. Rendering lives here / in the runner, never as a method on `Html`. This single deferred step is also where layout, flash messages, and CSRF token get injected into the context.
 - [x] `e()` escape helper (`htmlspecialchars`) for use in views; use native PHP control flow (`foreach`, `if`). *(Landed early in `lib/view.php` — views were already being written in Milestone 1; the deferred renderer still to come here.)*
 - **Check:** a handler returning `html(...)` renders via the runner with a loop + escaping; the returned `Html` still exposes `template`/`context`/`status` for tests to assert on before rendering; editing a template takes effect on next request — nothing to compile or cache.
+
+> Landed in `lib/view.php`. The deferred renderer `render_html(Html): string`
+> moved out of `lib/response.php` to sit beside the `e()` escape helper, keeping
+> the view layer in one file; `to_response()` still calls it during lowering. It
+> extracts the `Html` context (`EXTR_SKIP`) and `include`s `app/views/$template.php`
+> under output buffering, throwing `RuntimeException` for a missing template.
+> Rendering stays a plain function, never a method on `Html`, so template/context/
+> status remain inspectable until this step. Covered by `tests/view_test.php`
+> (direct render + missing-template throw) and end-to-end via `tests/response_test.php`.
+> Layout, flash messages, and CSRF injection were intentionally deferred to their
+> owning milestones (M6 middleware / M9 auth) — no shared layout yet, views stay
+> standalone documents.
 
 ## Milestone 6 — Middleware
 - [ ] `lib/middleware.php`: onion runner `($request, $stack, $handler)`.

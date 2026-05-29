@@ -114,20 +114,3 @@ function to_response(mixed $result): Response
         'Handler must return a response description (Html, Json, Redirect) or a raw Response.',
     );
 }
-
-function render_html(Html $html): string
-{
-    $templatePath = BASE_PATH . '/app/views/' . $html->template . '.php';
-
-    if (!is_file($templatePath)) {
-        throw new RuntimeException("View not found: {$html->template}");
-    }
-
-    $context = $html->context;
-    extract($context, EXTR_SKIP);
-
-    ob_start();
-    include $templatePath;
-
-    return (string) ob_get_clean();
-}
