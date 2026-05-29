@@ -68,9 +68,10 @@ npgx/
 - **Check:** `/users/<int:id>` calls a handler receiving `$id`.
 
 ## Milestone 2 — Config & env
-- [ ] `lib/env.php`: parse `.env` (KEY=VALUE, quotes, comments) → `env($key, $default)`.
-- [ ] `lib/config.php`: load `config.php` array → `config('db.dsn')` dot access.
-- [ ] `.env.example`, `config.php` with app + db keys.
+- [x] `lib/env.php`: parse `.env` (KEY=VALUE, quotes, comments) → `env($key, $default)`.
+- [x] `lib/config.php`: load `config.php` array → `config('db.dsn')` dot access.
+- [x] `.env.example`, `config.php` with app + db keys.
+- `env()` returns raw strings (trimmed, unquoted); bool/int coercion is explicit in `config.php`, not inside `env()`.
 - **Check:** `config()`/`env()` return expected values; missing keys behave sanely.
 
 ## Milestone 3 — Database (Postgres-first, raw SQL)
