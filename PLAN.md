@@ -166,18 +166,18 @@ npgx/
 > Covered by `tests/errors_test.php` (source excerpt window + unreadable file,
 > debug page message/file/last-SQL, generic-page no-leak, JSONL append/parse).
 
-## Milestone 8 — Validation
-- [ ] `lib/validation.php`: `validate($input, $rules)`; rules `required|email|max:N|min:N|int|in:a,b|confirmed` (extensible).
-- [ ] On failure: `ValidationException` → 422 / redirect-back-with-errors helper.
-- **Check:** valid input returns clean data; invalid throws and is rendered/redirected.
-
-## Milestone 9 — Auth (full batteries)
+## Milestone 8 — Auth (full batteries)
 - [ ] Sessions (secure cookie settings) as middleware.
 - [ ] CSRF: token in session, `csrf_field()`, verification middleware for unsafe methods.
 - [ ] `auth_attempt($email,$pw)`, `auth_login($user)`, `logout()`, `current_user()`, `require_login($req)`.
 - [ ] Password hashing wrappers (`password_hash`/`verify`).
 - [ ] Migration for users; example login/logout handlers + views.
 - **Check:** register → login → see current_user() → logout works; CSRF blocks forged POST.
+
+## Milestone 9 — Validation
+- [ ] `lib/validation.php`: `validate($input, $rules)`; rules `required|email|max:N|min:N|int|in:a,b|confirmed` (extensible).
+- [ ] On failure: `ValidationException` → 422 / redirect-back-with-errors helper.
+- **Check:** valid input returns clean data; invalid throws and is rendered/redirected.
 
 ## Milestone 10 — Scaffolding & tests
 - [ ] `npg make:route` (handler stub + routes.php entry), `npg test` (tiny assertion runner).
