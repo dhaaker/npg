@@ -113,8 +113,8 @@ function last_sql(): ?array
 }
 
 /**
- * Drop the cached connection and last-SQL capture. The test seam that lets a
- * test point the DSN at SQLite before the first real query.
+ * Drop the cached connection and last-SQL capture. The test seam that lets the
+ * harness point the DSN at the Postgres test database before the first query.
  */
 function db_reset(): void
 {
