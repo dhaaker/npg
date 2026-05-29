@@ -26,3 +26,20 @@ test('render_html() extracts context into the template and escapes it', function
 test('render_html() throws when the template is missing', function () {
     assert_throws(RuntimeException::class, fn() => render_html(new Html('does/not/exist')));
 });
+
+test('partial() renders a sub-view and escapes its context via e()', function () {
+    $body = partial('_abort', ['status' => 418, 'message' => '<teapot>']);
+
+    assert_true(str_contains($body, '418'), 'rendered partial should contain the status');
+    assert_true(str_contains($body, '&lt;teapot&gt;'), 'message should be HTML-escaped via e()');
+});
+
+test('partial() makes passed context available to the sub-view', function () {
+    $body = partial('_404', ['message' => 'nothing here']);
+
+    assert_true(str_contains($body, 'nothing here'), 'passed context should reach the partial');
+});
+
+test('partial() throws when the partial is missing', function () {
+    assert_throws(RuntimeException::class, fn() => partial('_does_not_exist'));
+});

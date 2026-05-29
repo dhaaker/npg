@@ -87,6 +87,8 @@ Because rendering is deferred to a single conversion step in the runner, the tem
 <?php endforeach; ?>
 ```
 
+Views compose with `partial('_name', [...])`: it renders a plain-PHP sub-view (resolved like `html()` — no leading slash, no `.php`, relative to the views root) and **returns** the output as a string, which the caller echoes — `<?= partial('_header', ['title' => 'Welcome']) ?>` / `<?= partial('_footer') ?>`. A partial gets the same shared context a full view does (current user, CSRF token, flashes, `app`), merged underneath what you pass it (passed keys win). There is still no shared layout — partials are explicit includes the reader sees, not a hidden wrapping document.
+
 ### Data layer — raw parameterized SQL over PDO, Postgres-first
 No ORM, no models. A thin set of helpers wraps PDO. SQL is written by hand; values are always bound. Rows come back as plain associative arrays.
 

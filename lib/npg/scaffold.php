@@ -135,15 +135,18 @@ function scaffold_app(string $sourceRoot, string $targetRoot): array
     // handlers/views. The migrations/ dir starts empty (the app writes its own
     // schema); a .gitkeep keeps it in version control and makes `npg migrate` a
     // clean no-op.
+    write_new_file($targetRoot . '/AGENTS.md', scaffold_agents_md_stub());
     write_new_file($targetRoot . '/routes.php', scaffold_routes_stub());
     write_new_file($targetRoot . '/app/handlers/home.php', scaffold_home_handler_stub());
+    write_new_file($targetRoot . '/app/views/_header.php', scaffold_header_view_stub());
+    write_new_file($targetRoot . '/app/views/_footer.php', scaffold_footer_view_stub());
     write_new_file($targetRoot . '/app/views/home.php', scaffold_home_view_stub());
     write_new_file($targetRoot . '/tests/home_test.php', scaffold_home_test_stub());
     write_new_file($targetRoot . '/migrations/.gitkeep', '');
     write_new_file($targetRoot . '/storage/logs/.gitkeep', '');
 
     return [
-        'lib/', 'npg', 'public/index.php', 'config.php', 'routes.php',
+        'lib/', 'npg', 'AGENTS.md', 'public/index.php', 'config.php', 'routes.php',
         'middleware.php', 'app/', 'migrations/', 'storage/logs/', 'tests/',
         '.env.example',
     ];
@@ -208,15 +211,52 @@ declare(strict_types=1);
 /** @var string $name */
 
 ?>
+<?= partial('_header', ['title' => $name]) ?>
+    <h1>Welcome to <?= e($name) ?></h1>
+    <p>Edit <code>app/views/home.php</code> and refresh — nothing to compile.</p>
+<?= partial('_footer') ?>
+
+PHP;
+}
+
+function scaffold_header_view_stub(): string
+{
+    return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+// Shared page header partial, rendered from a view with partial('_header', [...]).
+// It receives whatever the caller passes plus the shared view context
+// (current_user, csrf_token, flashes, app). Edit freely — it's plain PHP.
+
+/** @var string $title */
+
+$title ??= '';
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= e($name) ?></title>
+    <title><?= e($title) ?></title>
 </head>
 <body>
-    <h1>Welcome to <?= e($name) ?></h1>
-    <p>Edit <code>app/views/home.php</code> and refresh — nothing to compile.</p>
+
+PHP;
+}
+
+function scaffold_footer_view_stub(): string
+{
+    return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+// Shared page footer partial, rendered with partial('_footer') to close out
+// the document opened by _header.php.
+
+?>
 </body>
 </html>
 
@@ -245,4 +285,197 @@ test('home() describes the home view with the app name', function () {
 });
 
 PHP;
+}
+
+function scaffold_agents_md_stub(): string
+{
+    return <<<'MD'
+# AGENTS.md
+
+Guidance for AI agents (and humans) building an app on **npg**.
+
+## What this is
+
+npg is a grug-brained, batteries-included PHP web framework. **No Composer, no
+build step, no compilation, no codegen, no magic.** You edit PHP files under
+`app/` and refresh the browser. Targets **PHP 8.5** — use current syntax freely.
+
+The framework itself lives, vendored, under `lib/npg/` and ships the `npg` CLI.
+**Do not edit `lib/npg/`** — it is replaced wholesale by `./npg update`. Your app
+is everything else: `routes.php`, `app/`, `config.php`, `middleware.php`,
+`migrations/`, `tests/`, and `.env`.
+
+North star: a reader should understand any handler top-to-bottom with no hidden
+lifecycle and no convention they must memorize first. Everything is an explicit,
+grep-able function call.
+
+## Project layout (what you touch)
+
+```
+routes.php          one explicit table: URL pattern -> handler name
+app/handlers/       plain handler functions (one file per area)
+app/views/          plain-PHP templates (.php), no template engine
+migrations/         forward-only numbered NNN_*.sql
+tests/              flat-assertion test files
+config.php          returns a config array (reads .env via env())
+middleware.php      ordered global middleware list
+.env                secrets / per-environment values (copy from .env.example)
+```
+
+## Request flow
+
+```
+routes.php  ->  handler($request, ...$pathParams)  ->  return a response *description*  ->  runner renders & sends
+```
+
+- Register a route in `routes.php`: `path('/users/<int:id>', 'user_detail')`.
+  Path converters: `int` (cast to int), `slug`, `str`. Bound segments are passed
+  to the handler as positional args after `$request`.
+- Routing does **not** branch on HTTP method — one handler owns a URL and
+  inspects `$request->method` itself if it cares.
+- A handler is a plain function. It receives the `Request` plus path params and
+  **returns a value describing the response** — it never `echo`s and never
+  renders.
+
+```php
+function user_detail(Request $request, int $id): Html|Redirect
+{
+    $user = query_one('SELECT * FROM users WHERE id = ?', [$id]);
+    if (!$user) return not_found();
+
+    if ($request->method === 'POST') {
+        $data = validate($request->post, ['name' => 'required|max:100']);
+        query('UPDATE users SET name = ? WHERE id = ?', [$data['name'], $id]);
+        return redirect('/users/' . $id);
+    }
+
+    return html('users/show', ['user' => $user]);
+}
+```
+
+## Response descriptions
+
+Return exactly one of these (or a raw `Response` as the low-level escape hatch).
+Bare strings/arrays are **errors**, not implicit HTML/JSON.
+
+- `html('view/name', $context, $status = 200)` — renders `app/views/view/name.php`
+- `json($data, $status = 200)`
+- `redirect('/path', $status = 302)`
+- `not_found()` — 404 via the `_404` view
+- `abort($status, $message = '')` — error page via the `_abort` view
+
+`Request` fields: `method`, `path`, `query`, `post`, `headers`, `body`.
+
+## Views — plain PHP
+
+Templates are ordinary `.php` files under `app/views/`. There is nothing to
+compile or cache — what you write is what runs.
+
+- Escape every dynamic value with `e()`: `<?= e($user['name']) ?>`.
+- Compose with partials: `<?= partial('_header', ['title' => 'Home']) ?>`.
+- Every view/partial gets shared context for free: `current_user`, `csrf_token`,
+  `flashes`, and `app` (your `config('app')`). Your handler's context wins on key
+  collisions.
+- Put `<?= csrf_field() ?>` inside every non-GET `<form>`.
+- Repopulate forms after a failed submit with `old('field')`; show validation
+  errors with `errors()`.
+
+## Data layer — raw parameterized SQL
+
+No ORM, no query builder. Hand-written SQL over a shared PDO connection. **Always
+bind params; never concatenate user input into SQL.** Rows are plain assoc arrays.
+
+```php
+query('INSERT INTO users (email, name) VALUES (?, ?)', [$email, $name]); // affected rows
+$user  = query_one('SELECT * FROM users WHERE id = ?', [$id]);  // one row or null
+$users = query_all('SELECT * FROM users WHERE active = ?', [1]); // array of rows
+last_insert_id('users_id_seq'); // Postgres needs the sequence name
+tx(fn() => /* ... */);          // run a closure in a transaction
+```
+
+## Auth
+
+Sessions, CSRF, password hashing, and a login flow over a `users` table
+(`id`, `email`, `name`, `password_hash`, `created_at`).
+
+- `create_user($email, $name, $password)` — returns the new row (no hash)
+- `auth_attempt($email, $password)` — user row on success, else null
+- `auth_login($user)` / `logout()`
+- `current_user()` — logged-in user row or null (cached per request)
+- Guard inside a handler: `if ($r = require_login($request)) return $r;`
+
+## Validation
+
+`validate($input, $rules)` returns clean data (only declared keys; `int` coerced)
+or throws. You don't catch it — `validation_middleware` turns a failure into a
+422 JSON body for API clients, or a redirect back to the form with `errors()` and
+`old()` flashed for the next request.
+
+```php
+$data = validate($request->post, [
+    'email' => 'required|email',
+    'name'  => 'required|max:100',
+    'age'   => 'int|min:18',
+]);
+```
+
+Rules: `required`, `email`, `int`, `max:N`, `min:N`, `in:a,b,c`, `confirmed`
+(checks `{field}_confirmation`).
+
+## Config & env
+
+- `config('db.dsn')`, `config('app.name')`, `config('app.debug')` — read `config.php`
+- `env('APP_DEBUG', 'false')` — read `.env`
+
+## Migrations
+
+Forward-only SQL files in `migrations/`, named `001_*.sql`, `002_*.sql`. To change
+schema, write a new migration. Apply pending ones with `./npg migrate`.
+
+## Middleware
+
+`middleware.php` returns an ordered list run as an onion around every request.
+Keep it to universal concerns (session, CSRF, validation). **Per-route concerns
+are explicit guards inside handlers** (e.g. `require_login($request)`), not hidden
+middleware.
+
+## CLI
+
+```
+./npg serve          # dev server (php -S) with public/ as docroot
+./npg migrate        # apply pending migrations
+./npg test [files]   # run the test suite (optionally specific files)
+./npg make:route     # scaffold a handler + routes.php entry
+```
+
+Nothing the CLI does is required for the app to run — it just bundles dev tasks.
+
+## Testing
+
+Tests are plain PHP files in `tests/`, run by `./npg test` (no PHPUnit, no
+Composer). Because a handler returns a *description*, a test calls it and asserts
+on the returned value — no HTTP, no rendering, no DB:
+
+```php
+require_once config('paths.handlers') . '/home.php';
+
+test('home() describes the home view', function () {
+    $home = home(new Request('GET', '/', [], [], [], ''));
+    assert_true($home instanceof Html);
+    assert_same('home', $home->template);
+});
+```
+
+## House rules for editing this app
+
+- No magic: if behavior isn't visible in the file you're reading (or one it
+  explicitly requires/calls), it shouldn't happen.
+- Explicit over implicit: prefer a plain function call the reader can see over a
+  convention they must know.
+- SQL stays SQL: always bind parameters, never string-concatenate user input.
+- Handlers return a response description; they never `echo` and never render.
+- Don't edit `lib/npg/` — that's the vendored framework. Build in `app/`.
+- No Composer and no build step. If you think something must be vendored, it goes
+  in `lib/vendor/` by hand — clear it with the maintainer first.
+MD;
 }

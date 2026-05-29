@@ -49,7 +49,40 @@ function render_html(Html $html): string
 
     // Handler context wins on key collisions, so a view can override anything
     // shared (e.g. pass its own `current_user`).
-    $context = [...view_shared_context(), ...$html->context];
+    return capture_view($templatePath, [...view_shared_context(), ...$html->context]);
+}
+
+/**
+ * Render a sub-view (e.g. <?= partial('_header', ['title' => 'Welcome']) ?>)
+ * and return its output as a string for the caller to echo. The template name
+ * resolves the same way html() does — no leading slash, no `.php` extension,
+ * relative to config('paths.views'). A partial gets the same shared context a
+ * full view does, merged underneath what's passed (passed keys win), so
+ * _header/_footer can read current_user, csrf_token, flashes, and app for free.
+ *
+ * @param array<string, mixed> $context
+ */
+function partial(string $template, array $context = []): string
+{
+    $templatePath = config('paths.views') . '/' . $template . '.php';
+
+    if (!is_file($templatePath)) {
+        throw new RuntimeException("Partial not found: {$template}");
+    }
+
+    return capture_view($templatePath, [...view_shared_context(), ...$context]);
+}
+
+/**
+ * The shared render core: extract the context into local scope and include the
+ * plain-PHP template, capturing its output. Used by both render_html() and
+ * partial() so there is exactly one place that turns a template + context into
+ * a string.
+ *
+ * @param array<string, mixed> $context
+ */
+function capture_view(string $templatePath, array $context): string
+{
     extract($context, EXTR_SKIP);
 
     ob_start();
