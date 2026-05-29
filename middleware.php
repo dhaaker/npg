@@ -6,15 +6,19 @@ declare(strict_types=1);
 // (see lib/middleware.php). The first entry is the outermost layer. Entries
 // are named functions (grep-able) or closures — both resolve to a callable
 // `fn(Request $request, callable $next): mixed`.
+//
+// Example — request logging (define the function in this file, then add its name):
+//
+//     return [
+//         'log_requests',
+//     ];
+//
+//     function log_requests(Request $request, callable $next): mixed
+//     {
+//         $result = $next($request);
+//         error_log(sprintf('[npg] %s %s', $request->method, $request->path));
+//
+//         return $result;
+//     }
 
-return [
-    'log_requests',
-];
-
-function log_requests(Request $request, callable $next): mixed
-{
-    $result = $next($request);
-    error_log(sprintf('[npg] %s %s', $request->method, $request->path));
-
-    return $result;
-}
+return [];
