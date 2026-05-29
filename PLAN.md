@@ -246,7 +246,7 @@ npgx/
 > pass-through branches).
 
 ## Milestone 10 — Scaffolding & tests
-- [ ] `npg make:route` (handler stub + routes.php entry).
+- [x] `npg make:route` (handler stub + routes.php entry).
 - [x] `npg test` (tiny assertion runner) — shells out to the framework runner `lib/npg/run_tests.php`, forwards optional file args.
 - [x] `tests/` for router, views, validation (Milestone 9), db (dedicated `_test` Postgres DB), auth (router covered in Milestone 1).
 - **Check:** `./npg test` is green; `make:route` produces a working route.
@@ -265,8 +265,8 @@ npgx/
 > token, pass on a valid one), `session_middleware`, flash accumulation per key,
 > the `flash_errors`/`flash_old` → `errors()`/`old()` rotation, and
 > `reset_session()` clearing. The whole suite (97 assertions) is green. The
-> `npg test` subcommand has since landed (shells out to `lib/npg/run_tests.php`);
-> `npg make:route` is the only open part of this milestone.
+> `npg test` subcommand has since landed (shells out to `lib/npg/run_tests.php`),
+> and `npg make:route` (below) closes the milestone.
 >
 > Database tests run against a dedicated Postgres test database, the Laravel way:
 > `lib/npg/run_tests.php` loads `.env.testing` (instead of `.env`) so `config('db.dsn')`
@@ -275,6 +275,21 @@ npgx/
 > (`lib/npg/support.php`) to TRUNCATE every table except `migrations` and start
 > clean. Set up locally with `createdb npg_test` and a `.env.testing` copied from
 > `.env.testing.example`.
+>
+> `npg make:route <pattern> <handler> [--json]` closes the milestone. It lives in
+> `lib/npg/scaffold.php` (beside `scaffold_app`/`update_framework`) as pure
+> functions the CLI feeds `config('paths.*')` into — mirroring how `migrate`
+> calls `run_migrations(config('paths.migrations'))`. `make_route()` validates
+> the handler name, reuses the router's `compile_pattern()` to validate the
+> pattern and recover its typed params (so the generated stub's args match what
+> `dispatch()` passes — `int` -> `int`, `slug`/`str` -> `string`), writes
+> `app/handlers/<handler>.php` (refusing to clobber), and — unless `--json` — a
+> matching `app/views/<handler>.php` so the route renders in the browser
+> immediately. `append_route()` inserts a `path('<pattern>', '<handler>')` entry
+> before the route table's closing `];` (refusing duplicate patterns). With
+> `--json` the handler returns `json([...])` and no view is written. Covered by
+> `tests/scaffold_test.php` (append insertion + duplicate guard, html/json
+> variants, typed-param stubs, unknown-converter / invalid-name / clobber errors).
 
 ## Milestone 11 — Demo app + docs
 - [ ] A small CRUD feature (e.g. notes) exercising every subsystem end-to-end.

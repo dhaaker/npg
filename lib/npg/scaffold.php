@@ -166,6 +166,173 @@ function update_framework(string $sourceRoot, string $targetRoot): void
     copy_dir($sourceRoot . '/lib/npg', $targetRoot . '/lib/npg');
 }
 
+/**
+ * `npg make:route` — scaffold a handler stub for $pattern, wire it into
+ * routes.php, and (unless $json) scaffold a matching view so the route works in
+ * the browser immediately. Returns a list of human-readable change lines for
+ * the CLI to print. Pure: every path is an explicit argument (the CLI passes
+ * config('paths.*')), no global state.
+ *
+ * @return list<string>
+ */
+function make_route(
+    string $pattern,
+    string $handler,
+    string $handlersDir,
+    string $viewsDir,
+    string $routesFile,
+    bool $json = false,
+): array {
+    if (!preg_match('/^[a-z_][a-z0-9_]*$/i', $handler)) {
+        throw new InvalidArgumentException("Invalid handler name: {$handler} (must be a valid PHP function name)");
+    }
+
+    // Reuse the router's compiler: it validates the pattern (throws on an
+    // unknown converter type) and hands back the typed params, so the generated
+    // stub's argument list matches what dispatch() will pass in.
+    [, $params] = compile_pattern($pattern);
+
+    $handlerFile = $handlersDir . '/' . $handler . '.php';
+    if (is_file($handlerFile)) {
+        throw new RuntimeException("Handler file already exists: {$handlerFile}");
+    }
+
+    $changes = [];
+
+    write_new_file($handlerFile, make_route_handler_stub($handler, $params, $json));
+    $changes[] = "created  {$handlerFile}";
+
+    if (!$json) {
+        $viewFile = $viewsDir . '/' . $handler . '.php';
+        if (is_file($viewFile)) {
+            $changes[] = "skipped  {$viewFile} (already exists)";
+        } else {
+            write_new_file($viewFile, make_route_view_stub($handler, $params));
+            $changes[] = "created  {$viewFile}";
+        }
+    }
+
+    append_route($routesFile, $pattern, $handler);
+    $changes[] = "updated  {$routesFile}";
+
+    return $changes;
+}
+
+/**
+ * Append a `path('<pattern>', '<handler>')` entry to the route table, just
+ * before its closing `];`. Refuses to add a duplicate pattern. Assumes the
+ * conventional `return [ ... ];` shape written by the scaffolder / demo app.
+ */
+function append_route(string $routesFile, string $pattern, string $handler): void
+{
+    if (!is_file($routesFile)) {
+        throw new RuntimeException("Routes file not found: {$routesFile}");
+    }
+
+    $contents = (string) file_get_contents($routesFile);
+
+    if (str_contains($contents, "path('{$pattern}'")) {
+        throw new RuntimeException("Route already exists for pattern: {$pattern}");
+    }
+
+    $trimmed = rtrim($contents);
+    if (!str_ends_with($trimmed, '];')) {
+        throw new RuntimeException("Could not find the route table's closing '];' in {$routesFile}; add the route manually.");
+    }
+
+    $body = rtrim(substr($trimmed, 0, -2));
+    $entry = "    path('{$pattern}', '{$handler}'),";
+
+    write_new_file($routesFile, $body . "\n" . $entry . "\n];\n");
+}
+
+/**
+ * The generated handler function. Path params become typed positional args
+ * after $request (int -> int, slug/str -> string), matching what dispatch()
+ * passes in, and are echoed back through the response so the route is useful
+ * the moment it's created.
+ *
+ * @param list<array{name: string, type: string}> $params
+ */
+function make_route_handler_stub(string $handler, array $params, bool $json): string
+{
+    $args = ['Request $request'];
+    foreach ($params as $param) {
+        $args[] = route_param_php_type($param['type']) . ' $' . $param['name'];
+    }
+    $signature = implode(', ', $args);
+
+    $returnType = $json ? 'Json' : 'Html';
+
+    if ($json) {
+        $items = ["        'ok' => true,"];
+        foreach ($params as $param) {
+            $items[] = "        '{$param['name']}' => \${$param['name']},";
+        }
+        $payload = "[\n" . implode("\n", $items) . "\n    ]";
+        $body = "    return json({$payload});";
+    } else {
+        $items = [];
+        foreach ($params as $param) {
+            $items[] = "        '{$param['name']}' => \${$param['name']},";
+        }
+        $context = $items === [] ? '[]' : "[\n" . implode("\n", $items) . "\n    ]";
+        $body = "    return html('{$handler}', {$context});";
+    }
+
+    return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+function {$handler}({$signature}): {$returnType}
+{
+{$body}
+}
+
+PHP;
+}
+
+/**
+ * The generated view: a plain-PHP page wrapped in the shared header/footer
+ * partials, echoing any path params with e(). Mirrors scaffold_home_view_stub().
+ *
+ * @param list<array{name: string, type: string}> $params
+ */
+function make_route_view_stub(string $handler, array $params): string
+{
+    $docblock = '';
+    $lines = [];
+    foreach ($params as $param) {
+        $phpType = route_param_php_type($param['type']);
+        $docblock .= "/** @var {$phpType} \${$param['name']} */\n";
+        $lines[] = "    <p>{$param['name']}: <?= e(\${$param['name']}) ?></p>";
+    }
+
+    $paramBlock = $lines === [] ? '' : "\n" . implode("\n", $lines);
+
+    return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+{$docblock}?>
+<?= partial('_header', ['title' => '{$handler}']) ?>
+    <h1>{$handler}</h1>{$paramBlock}
+<?= partial('_footer') ?>
+
+PHP;
+}
+
+/**
+ * Map a route converter type to the PHP type for a generated handler argument.
+ * Only `int` is cast by the router; everything else arrives as a string.
+ */
+function route_param_php_type(string $type): string
+{
+    return $type === 'int' ? 'int' : 'string';
+}
+
 function scaffold_routes_stub(): string
 {
     return <<<'PHP'
@@ -445,7 +612,7 @@ middleware.
 ./npg serve          # dev server (php -S) with public/ as docroot
 ./npg migrate        # apply pending migrations
 ./npg test [files]   # run the test suite (optionally specific files)
-./npg make:route     # scaffold a handler + routes.php entry
+./npg make:route <pattern> <handler> [--json]  # scaffold a handler + routes.php entry (and a view unless --json)
 ```
 
 Nothing the CLI does is required for the app to run — it just bundles dev tasks.

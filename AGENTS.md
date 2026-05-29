@@ -138,7 +138,7 @@ A single entry script. **Nothing it does is required for the app to run** — th
 ./npg migrate        # apply pending migrations
 ./npg new <dir>      # scaffold a new app, vendoring lib/npg/ + npg into it
 ./npg update <dir>   # re-copy this install's lib/npg/ into an existing app
-./npg make:route     # scaffold a handler + routes.php entry
+./npg make:route <pattern> <handler> [--json]  # scaffold a handler + routes.php entry (and a view unless --json)
 ./npg test           # run the test suite
 ```
 

@@ -47,6 +47,43 @@ switch ($command) {
         passthru($cmd, $code);
         exit($code);
 
+    case 'make:route':
+        $json = false;
+        $positional = [];
+        foreach (array_slice($argv, 2) as $arg) {
+            if ($arg === '--json') {
+                $json = true;
+                continue;
+            }
+            $positional[] = $arg;
+        }
+
+        $pattern = $positional[0] ?? '';
+        $handler = $positional[1] ?? '';
+        if ($pattern === '' || $handler === '') {
+            fwrite(STDERR, "Usage: ./npg make:route <pattern> <handler> [--json]\n");
+            exit(2);
+        }
+
+        try {
+            $changes = make_route(
+                $pattern,
+                $handler,
+                config('paths.handlers'),
+                config('paths.views'),
+                config('paths.routes'),
+                $json,
+            );
+        } catch (Throwable $e) {
+            fwrite(STDERR, "Could not make route: {$e->getMessage()}\n");
+            exit(1);
+        }
+
+        foreach ($changes as $change) {
+            fwrite(STDOUT, "{$change}\n");
+        }
+        exit(0);
+
     case 'new':
         $target = $argv[2] ?? '';
         if ($target === '') {
@@ -98,6 +135,7 @@ switch ($command) {
         fwrite(STDERR, "  serve            Start a dev server (php -S) with public/ as docroot\n");
         fwrite(STDERR, "  migrate          Apply pending migrations in migrations/\n");
         fwrite(STDERR, "  test [files...]  Run the test suite (lib/npg/run_tests.php), optionally specific files\n");
+        fwrite(STDERR, "  make:route <pattern> <handler> [--json]  Scaffold a handler + routes.php entry (and a view unless --json)\n");
         fwrite(STDERR, "  new <dir>        Scaffold a new app and vendor lib/npg/ + npg into it\n");
         fwrite(STDERR, "  update <dir>     Re-copy this install's lib/npg/ into an existing app\n");
         exit($command === '' ? 0 : 2);
