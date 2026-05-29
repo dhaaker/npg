@@ -23,9 +23,12 @@ declare(strict_types=1);
 //
 // session_middleware must come before csrf_middleware (CSRF reads the session)
 // and before any handler that calls current_user(); both are defined in
-// lib/session.php.
+// lib/session.php. validation_middleware (lib/validation.php) sits inside both
+// so it can flash errors/old input to the session and redirect back when a
+// handler's validate() call throws.
 
 return [
     'session_middleware',
     'csrf_middleware',
+    'validation_middleware',
 ];

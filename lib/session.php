@@ -56,14 +56,63 @@ function flashes(): array
 }
 
 /**
- * Move last request's flashes into the request-scoped store and clear them from
- * the session, so each flash is shown exactly once. Called by start_session()
- * on every request; exposed as a test seam for simulating the redirect boundary.
+ * Stash validation errors (field => list<string>) to be shown on the next
+ * request, after a redirect back to the form. Read with errors().
+ *
+ * @param array<string, list<string>> $errors
+ */
+function flash_errors(array $errors): void
+{
+    $_SESSION['_flash_errors'] = $errors;
+}
+
+/**
+ * Stash the submitted input so the redisplayed form can repopulate its fields.
+ * Read per-field with old().
+ *
+ * @param array<string, mixed> $input
+ */
+function flash_old(array $input): void
+{
+    $_SESSION['_flash_old'] = $input;
+}
+
+/**
+ * Validation errors carried over from the previous request, as
+ * [field => list<string>]. Empty when the last request flashed none.
+ *
+ * @return array<string, list<string>>
+ */
+function errors(): array
+{
+    return $GLOBALS['__npg_errors'] ?? [];
+}
+
+/**
+ * A single field's previously-submitted value, for repopulating a form after a
+ * failed submit. Returns $default when there is no old input for $key.
+ */
+function old(string $key, string $default = ''): string
+{
+    $value = $GLOBALS['__npg_old'][$key] ?? $default;
+
+    return is_string($value) ? $value : $default;
+}
+
+/**
+ * Move last request's flashes, errors, and old input into the request-scoped
+ * store and clear them from the session, so each is shown exactly once. Called
+ * by start_session() on every request; exposed as a test seam for simulating
+ * the redirect boundary.
  */
 function flash_rotate(): void
 {
     $GLOBALS['__npg_flash'] = $_SESSION['_flash'] ?? [];
+    $GLOBALS['__npg_errors'] = $_SESSION['_flash_errors'] ?? [];
+    $GLOBALS['__npg_old'] = $_SESSION['_flash_old'] ?? [];
     $_SESSION['_flash'] = [];
+    $_SESSION['_flash_errors'] = [];
+    $_SESSION['_flash_old'] = [];
 }
 
 /**
@@ -138,5 +187,10 @@ function csrf_middleware(Request $request, callable $next): mixed
 function reset_session(): void
 {
     $_SESSION = [];
-    unset($GLOBALS['__npg_flash'], $GLOBALS['__npg_current_user']);
+    unset(
+        $GLOBALS['__npg_flash'],
+        $GLOBALS['__npg_errors'],
+        $GLOBALS['__npg_old'],
+        $GLOBALS['__npg_current_user'],
+    );
 }

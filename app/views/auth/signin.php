@@ -20,13 +20,21 @@ $flashes ??= [];
         <p role="alert"><?= e($message) ?></p>
     <?php endforeach; ?>
 
+    <?php $errors = errors(); ?>
+
     <form method="post" action="/login">
         <?= csrf_field() ?>
         <p>
-            <label>Email <input type="email" name="email" required></label>
+            <label>Email <input type="email" name="email" value="<?= e(old('email')) ?>" required></label>
+            <?php foreach ($errors['email'] ?? [] as $message): ?>
+                <span role="alert"><?= e($message) ?></span>
+            <?php endforeach; ?>
         </p>
         <p>
             <label>Password <input type="password" name="password" required></label>
+            <?php foreach ($errors['password'] ?? [] as $message): ?>
+                <span role="alert"><?= e($message) ?></span>
+            <?php endforeach; ?>
         </p>
         <button type="submit">Log in</button>
     </form>

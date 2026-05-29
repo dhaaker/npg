@@ -208,13 +208,41 @@ npgx/
 > logout→redirect, logged-out dashboard→`/login`.
 
 ## Milestone 9 — Validation
-- [ ] `lib/validation.php`: `validate($input, $rules)`; rules `required|email|max:N|min:N|int|in:a,b|confirmed` (extensible).
-- [ ] On failure: `ValidationException` → 422 / redirect-back-with-errors helper.
+- [x] `lib/validation.php`: `validate($input, $rules)`; rules `required|email|max:N|min:N|int|in:a,b|confirmed` (extensible).
+- [x] On failure: `ValidationException` → 422 / redirect-back-with-errors helper.
 - **Check:** valid input returns clean data; invalid throws and is rendered/redirected.
+
+> Landed in `lib/validation.php` (required from `bootstrap.php` after
+> `session.php`, before `auth.php`). `validate($input, $rules)` is a **pure**
+> function — all inputs are arguments, no global state — that returns clean data
+> (only the declared keys, with the `int` rule coerced to a real int) or throws
+> `ValidationException` carrying per-field messages (`errors`) and the original
+> `input` (for old()). Rules are a flat dispatch (`validation_passes()` predicate
+> + `validation_message()` text, both `match` on the rule name, so `grep` finds
+> each one): `required`, `email`, `max:N`/`min:N` (string length via `mb_strlen`),
+> `int`, `in:a,b,c`, `confirmed` (reads `{field}_confirmation`). An empty,
+> non-required field is optional — it passes through and its other rules are
+> skipped. All side effects of a failure live in the framework-owned
+> `validation_middleware` (listed by name in the repo-root `middleware.php` after
+> `session`/`csrf`, so flashing works): it catches `ValidationException` and
+> returns `json(['errors' => …], 422)` for `Accept: application/json` clients, or
+> flashes errors + old input and redirects back to `$request->path` for forms
+> (handlers own one URL for GET+POST). The redirect payload rides the existing
+> rotate-once flash seam: new `flash_errors`/`flash_old` setters and
+> `errors()`/`old($key)` readers in `lib/session.php`, rotated by an extended
+> `flash_rotate()` and cleared by `reset_session()`. Views call `errors()`/
+> `old()` directly (like `csrf_field()`), so no context threading. Example
+> handlers now use `validate()`: `auth_register`
+> (`email|name|password+confirmed`) and `auth_signin`; their views redisplay
+> field errors and repopulate old input, and register gained a
+> `password_confirmation` field. Covered by `tests/validation_test.php` (clean
+> data / key filtering, int coercion, every rule pass+fail, optional-empty skip,
+> exception payload, and the middleware's redirect-with-flash / 422-JSON /
+> pass-through branches).
 
 ## Milestone 10 — Scaffolding & tests
 - [ ] `npg make:route` (handler stub + routes.php entry), `npg test` (tiny assertion runner).
-- [~] `tests/` for router, views, validation, db (dedicated `_test` Postgres DB), auth (router covered in Milestone 1).
+- [~] `tests/` for router, views, validation (Milestone 9), db (dedicated `_test` Postgres DB), auth (router covered in Milestone 1).
 - **Check:** `./npg test` is green; `make:route` produces a working route.
 
 > Landed early (alongside Milestone 0): a tiny built-in test harness (`tests/harness.php` flat

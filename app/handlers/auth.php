@@ -4,33 +4,29 @@ declare(strict_types=1);
 
 // Example auth handlers. Each owns one URL and inspects $request->method itself
 // (no method dispatch in the router). They return response *descriptions*; the
-// runner performs the effect. CSRF is enforced globally by csrf_middleware, so
-// the POST branches only need the form fields. The inline checks here are
-// deliberately minimal and will be replaced by validate() in Milestone 9.
+// runner performs the effect. CSRF is enforced globally by csrf_middleware, and
+// form validation by validate() (lib/validation.php): a failed validate() throws
+// a ValidationException that validation_middleware turns into a redirect back
+// with errors + old input, so the POST branches below only see clean data.
 
 function auth_register(Request $request): Html|Redirect
 {
     if ($request->method === 'POST') {
-        $email = trim((string) ($request->post['email'] ?? ''));
-        $name = trim((string) ($request->post['name'] ?? ''));
-        $password = (string) ($request->post['password'] ?? '');
+        $data = validate($request->post, [
+            'email' => 'required|email|max:255',
+            'name' => 'required|max:100',
+            'password' => 'required|min:8|confirmed',
+        ]);
 
-        // Minimal inline validation — replaced by validate() in M9.
-        if ($email === '' || $name === '' || strlen($password) < 8) {
-            flash('error', 'Email, name, and an 8+ character password are required.');
-
-            return redirect('/register');
-        }
-
-        if (query_one('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
+        if (query_one('SELECT id FROM users WHERE email = ?', [$data['email']]) !== null) {
             flash('error', 'That email is already registered.');
 
             return redirect('/register');
         }
 
-        $user = create_user($email, $name, $password);
+        $user = create_user($data['email'], $data['name'], $data['password']);
         auth_login($user);
-        flash('success', 'Welcome, ' . $name . '!');
+        flash('success', 'Welcome, ' . $data['name'] . '!');
 
         return redirect('/dashboard');
     }
@@ -41,10 +37,12 @@ function auth_register(Request $request): Html|Redirect
 function auth_signin(Request $request): Html|Redirect
 {
     if ($request->method === 'POST') {
-        $email = trim((string) ($request->post['email'] ?? ''));
-        $password = (string) ($request->post['password'] ?? '');
+        $data = validate($request->post, [
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
 
-        $user = auth_attempt($email, $password);
+        $user = auth_attempt($data['email'], $data['password']);
         if ($user === null) {
             flash('error', 'Those credentials do not match our records.');
 
