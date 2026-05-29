@@ -58,8 +58,15 @@ function auth_signin(Request $request): Html|Redirect
     return html('auth/signin');
 }
 
-function auth_logout(Request $request): Redirect
+function auth_logout(Request $request): Html|Redirect
 {
+    // Logging out mutates session state, so it must be POST-only. csrf_middleware
+    // only guards unsafe methods, so a GET /logout would let a stray
+    // <img src="/logout"> or link prefetch silently sign the user out.
+    if ($request->method !== 'POST') {
+        return abort(405, 'Method Not Allowed');
+    }
+
     logout();
     flash('success', 'Logged out.');
 
