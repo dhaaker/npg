@@ -26,6 +26,12 @@ test('config_get() returns default for partial path', function () {
 });
 
 test('config() reads from bootstrap-loaded config', function () {
+    // Snapshot the live env/config so we restore the suite's test-database
+    // config exactly — reloading from a fixed .env file here would switch the
+    // whole suite onto the wrong database mid-run.
+    $envSnapshot = $GLOBALS['__npg_env'] ?? null;
+    $configSnapshot = $GLOBALS['__npg_config'] ?? null;
+
     $path = sys_get_temp_dir() . '/npg_config_test_' . uniqid('', true) . '.env';
     file_put_contents($path, "APP_NAME=test-app\nDB_DSN=pgsql:host=test\n");
 
@@ -37,8 +43,8 @@ test('config() reads from bootstrap-loaded config', function () {
         assert_same('pgsql:host=test', config('db.dsn'));
     } finally {
         @unlink($path);
-        load_env(BASE_PATH . '/.env');
-        load_config(BASE_PATH . '/config.php');
+        $GLOBALS['__npg_env'] = $envSnapshot;
+        $GLOBALS['__npg_config'] = $configSnapshot;
     }
 });
 

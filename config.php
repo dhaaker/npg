@@ -10,7 +10,7 @@ return [
         'url' => env('APP_URL', 'http://npgx.test'),
     ],
     'db' => [
-        'dsn' => env('DB_DSN', 'pgsql:host=127.0.0.1;port=5432;dbname=npgx'),
+        'dsn' => env('DB_DSN', ''),
         'user' => env('DB_USER', ''),
         'password' => env('DB_PASSWORD', ''),
     ],

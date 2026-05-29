@@ -4,5 +4,10 @@ declare(strict_types=1);
 
 function user_detail(Request $request, int $id): Html
 {
-    return html('users/show', ['id' => $id]);
+    $user = query_one('SELECT id, name, email FROM users WHERE id = ?', [$id]);
+    if ($user === null) {
+        return not_found();
+    }
+
+    return html('users/show', ['user' => $user]);
 }

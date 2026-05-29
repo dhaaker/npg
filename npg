@@ -1,0 +1,41 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// npg — convenience CLI. Nothing here is required for the app to run; the app
+// runs under any PHP server pointed at public/. This script just bundles the
+// common dev tasks behind one entry point.
+
+define('BASE_PATH', __DIR__);
+define('LIB_PATH', BASE_PATH . '/lib');
+
+require BASE_PATH . '/lib/bootstrap.php';
+
+$command = $argv[1] ?? '';
+
+switch ($command) {
+    case 'serve':
+        $docroot = escapeshellarg(BASE_PATH . '/public');
+        fwrite(STDOUT, "Serving public/ at http://localhost:8000 (Ctrl-C to stop)\n");
+        passthru('php -S localhost:8000 -t ' . $docroot, $code);
+        exit($code);
+
+    case 'migrate':
+        $applied = run_migrations(BASE_PATH . '/migrations');
+        if ($applied === []) {
+            fwrite(STDOUT, "Nothing to migrate.\n");
+            exit(0);
+        }
+        foreach ($applied as $name) {
+            fwrite(STDOUT, "Applied {$name}\n");
+        }
+        exit(0);
+
+    default:
+        fwrite(STDERR, "Usage: ./npg <command>\n\n");
+        fwrite(STDERR, "Commands:\n");
+        fwrite(STDERR, "  serve     Start a dev server (php -S) with public/ as docroot\n");
+        fwrite(STDERR, "  migrate   Apply pending migrations in migrations/\n");
+        exit($command === '' ? 0 : 2);
+}

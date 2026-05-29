@@ -95,7 +95,7 @@ $users = query_all('SELECT * FROM users WHERE active = ?', [1]); // array of row
 
 Postgres is the first-class target (`pdo_pgsql`), but helpers stay portable PDO so SQLite/MySQL work for tests.
 
-The `query*` helpers reach a **single shared PDO connection** lazily created on first use and held in a bootstrap-owned singleton (see the north star note on concentrated state). This is the one bit of "spooky" global the data layer relies on — it is intentional, and it is the *only* such global here. Tests swap the database by pointing the configured DSN at SQLite before the first query; there is no per-call connection injection.
+The `query*` helpers reach a **single shared PDO connection** lazily created on first use and held in a bootstrap-owned singleton (see the north star note on concentrated state). This is the one bit of "spooky" global the data layer relies on — it is intentional, and it is the *only* such global here. There is no per-call connection injection. Tests run against a dedicated Postgres test database (the Laravel way): the test runner loads `.env.testing` so the configured DSN points at a `<db>_test` database, migrates it once, and resets state between tests by truncating tables.
 
 ### Config & secrets — `.env` + `config.php`
 `.env` holds secrets/per-environment values, parsed at boot. `config.php` returns a plain array (and may read from `env()`). Access via `config('db.dsn')` and `env('APP_DEBUG')`.

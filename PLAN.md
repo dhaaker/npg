@@ -78,19 +78,31 @@ npgx/
 - [x] `lib/db.php`: a **single bootstrap-owned PDO connection**, created lazily on first use from `config('db.dsn')`, with sane attributes (exceptions, assoc fetch). This is the one deliberate stateful global in the data layer — no per-call connection injection.
 - [x] `query($sql, $params)`, `query_one()`, `query_all()`, `last_insert_id()`, `tx(callable)`.
 - [x] Capture **last executed SQL + params** in a global for the debug page.
-- **Check:** against local Postgres (`npgx` db) a SELECT round-trips to an array; tests swap the DSN to SQLite before the first query.
+- **Check:** against local Postgres (`npgx` db) a SELECT round-trips to an array; tests run against a dedicated `_test` Postgres database.
 
 > Landed in `lib/db.php` (required from `bootstrap.php`). Helpers: `db()` (lazy
 > connection), `query`/`query_one`/`query_all`, `last_insert_id`, `tx`, plus a
 > shared `db_execute()` that captures the last SQL+params (exposed via
-> `last_sql()` for the Milestone 7 debug page) and `db_reset()` as the test seam
-> for swapping the DSN. Covered by `tests/db_test.php` against in-memory SQLite.
+> `last_sql()` for the Milestone 7 debug page) and `db_reset()` to drop the
+> cached connection. Covered by `tests/db_test.php` against a dedicated Postgres
+> test database (see the testing note under Milestone 10).
 
 ## Milestone 4 — Migrations + CLI seed
-- [ ] `lib/migrate.php`: ensure `migrations` table; apply un-applied `migrations/NNN_*.sql` in order; record each.
-- [ ] `npg` CLI: `serve`, `migrate` (parse argv, dispatch). Make executable.
-- [ ] First migration `001_create_users.sql`.
+- [x] `lib/migrate.php`: ensure `migrations` table; apply un-applied `migrations/NNN_*.sql` in order; record each.
+- [x] `npg` CLI: `serve`, `migrate` (parse argv, dispatch). Make executable.
+- [x] First migration `001_create_users.sql`.
 - **Check:** `./npg migrate` creates tables; re-running is a no-op.
+
+> Landed in `lib/migrate.php` (required from `bootstrap.php`). Forward-only:
+> `run_migrations($dir)` ensures the `migrations` table, then applies each
+> pending `NNN_*.sql` in filename order inside `tx()` — migration SQL runs via
+> `db()->exec()` (multi-statement) while the bookkeeping insert uses `query()`.
+> Helpers `migration_files`/`applied_migrations`/`pending_migrations`/
+> `apply_migration` take the dir as an explicit arg. `npg` CLI (executable, repo
+> root) dispatches `serve` (php -S fallback) and `migrate`. First migration
+> `migrations/001_create_users.sql` (Postgres). Covered by `tests/migrate_test.php`
+> against the dedicated `_test` Postgres database (see the testing note under
+> Milestone 10).
 
 ## Milestone 5 — Views (plain PHP, no engine, deferred render)
 - [ ] `html($template, $context = [], $status = 200)` returns an `Html` description — it does **not** render on the spot.
@@ -124,7 +136,7 @@ npgx/
 
 ## Milestone 10 — Scaffolding & tests
 - [ ] `npg make:route` (handler stub + routes.php entry), `npg test` (tiny assertion runner).
-- [~] `tests/` for router, views, validation, db (SQLite), auth (router covered in Milestone 1).
+- [~] `tests/` for router, views, validation, db (dedicated `_test` Postgres DB), auth (router covered in Milestone 1).
 - **Check:** `./npg test` is green; `make:route` produces a working route.
 
 > Landed early (alongside Milestone 0): a tiny built-in test harness (`tests/harness.php` flat
@@ -132,7 +144,15 @@ npgx/
 > Covered so far: response lowering (`to_response`/`html`/`json`/`redirect`),
 > `request_from_globals()`, and routing (`path`/`compile_pattern`/`match_route`/`dispatch`).
 > Run with `php tests/run.php`; `npg test` will shell out to it once the CLI exists.
-> Views/validation/db/auth tests still to come with their milestones.
+> Views/validation/auth tests still to come with their milestones.
+>
+> Database tests run against a dedicated Postgres test database, the Laravel way:
+> `tests/run.php` loads `.env.testing` (instead of `.env`) so `config('db.dsn')`
+> points at the `_test` database, refuses to run unless the db name contains
+> `test`, then migrates it once up front. Each DB test calls `fresh_database()`
+> (`tests/support.php`) to TRUNCATE every table except `migrations` and start
+> clean. Set up locally with `createdb npg_test` and a `.env.testing` copied from
+> `.env.testing.example`.
 
 ## Milestone 11 — Demo app + docs
 - [ ] A small CRUD feature (e.g. notes) exercising every subsystem end-to-end.

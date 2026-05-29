@@ -11,6 +11,33 @@ define('LIB_PATH', BASE_PATH . '/lib');
 
 require BASE_PATH . '/lib/bootstrap.php';
 require __DIR__ . '/harness.php';
+require __DIR__ . '/support.php';
+
+// Tests run against a dedicated Postgres test database, configured the
+// Laravel way: bootstrap loaded .env above; here we override onto .env.testing
+// so config('db.dsn') points at the _test database for the whole suite.
+$envFile = BASE_PATH . '/.env.testing';
+if (!is_file($envFile)) {
+    fwrite(STDERR, "Missing .env.testing — copy .env.testing.example and point it at your test database.\n");
+    exit(2);
+}
+load_env($envFile);
+load_config(BASE_PATH . '/config.php');
+
+// Destructive-op safety net: the suite truncates tables, so never let it run
+// against anything but a clearly-named test database.
+if (!str_contains((string) config('db.dsn'), 'test')) {
+    fwrite(STDERR, "Refusing to run: db.dsn does not look like a test database.\n");
+    exit(2);
+}
+
+// Migrate the test database once up front so tests share the real schema.
+try {
+    run_migrations(BASE_PATH . '/migrations');
+} catch (Throwable $e) {
+    fwrite(STDERR, "Cannot prepare test DB ({$e->getMessage()}). Create it first: createdb npg_test\n");
+    exit(2);
+}
 
 $files = array_slice($argv, 1);
 if ($files === []) {
