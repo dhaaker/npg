@@ -7,6 +7,8 @@ define('LIB_PATH', BASE_PATH . '/lib');
 
 require BASE_PATH . '/lib/bootstrap.php';
 
+install_error_handlers();
+
 foreach (glob(BASE_PATH . '/app/handlers/*.php') ?: [] as $handlerFile) {
     require_once $handlerFile;
 }

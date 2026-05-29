@@ -143,10 +143,28 @@ npgx/
 > name/closure resolution).
 
 ## Milestone 7 — Errors & dev experience
-- [ ] `lib/errors.php`: set error/exception/shutdown handlers.
-- [ ] Debug-mode page: message, source lines around fault, request context, **last SQL**. Plain/parseable.
-- [ ] Prod mode: generic 500 + structured (JSON-line) log to `storage/logs/`.
+- [x] `lib/errors.php`: set error/exception/shutdown handlers.
+- [x] Debug-mode page: message, source lines around fault, request context, **last SQL**. Plain/parseable.
+- [x] Prod mode: generic 500 + structured (JSON-line) log to `storage/logs/`.
 - **Check:** a thrown error in debug shows source + last SQL; with `APP_DEBUG=false` shows generic page and logs.
+
+> Landed in `lib/errors.php` (required from `bootstrap.php`; handlers installed
+> by `install_error_handlers()`, called once from `public/index.php` so the test
+> runner and `npg` CLI stay isolated). `npg_error_handler` promotes
+> warnings/notices to `ErrorException` (respecting `error_reporting()` for `@`
+> suppression), `npg_exception_handler` catches uncaught throwables, and
+> `npg_shutdown_handler` catches fatals via `error_get_last()`. All three funnel
+> into `handle_throwable()`, which branches on `config('app.debug')`. The debug
+> page (`render_debug_page`) is built from plain strings with `e()` — never
+> `render_html()`/a view template, so a broken template or dead DB can't recurse
+> — and shows the exception class+message, a `source_excerpt()` around the fault
+> line, request context (read straight from superglobals via
+> `request_debug_context()`), the `last_sql()` from `lib/db.php`, and the trace.
+> Prod renders `generic_error_page()` (leaks nothing) and appends a structured
+> JSONL entry via `log_error()`/`log_line()` to `error_log_path()`
+> (`storage/logs/app.log`, dir auto-created; `?string $path` is the test seam).
+> Covered by `tests/errors_test.php` (source excerpt window + unreadable file,
+> debug page message/file/last-SQL, generic-page no-leak, JSONL append/parse).
 
 ## Milestone 8 — Validation
 - [ ] `lib/validation.php`: `validate($input, $rules)`; rules `required|email|max:N|min:N|int|in:a,b|confirmed` (extensible).
