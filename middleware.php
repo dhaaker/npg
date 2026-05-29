@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+// The ordered global middleware list, run as an onion around every request
+// (see lib/middleware.php). The first entry is the outermost layer. Entries
+// are named functions (grep-able) or closures — both resolve to a callable
+// `fn(Request $request, callable $next): mixed`.
+
+return [
+    'log_requests',
+];
+
+function log_requests(Request $request, callable $next): mixed
+{
+    $result = $next($request);
+    error_log(sprintf('[npg] %s %s', $request->method, $request->path));
+
+    return $result;
+}

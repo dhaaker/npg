@@ -12,6 +12,9 @@ foreach (glob(BASE_PATH . '/app/handlers/*.php') ?: [] as $handlerFile) {
 }
 
 $routes = require BASE_PATH . '/routes.php';
+$middleware = require BASE_PATH . '/middleware.php';
 $request = request_from_globals();
 
-to_response(dispatch($routes, $request))->send();
+$core = static fn(Request $request): mixed => dispatch($routes, $request);
+
+to_response(run_middleware($request, $middleware, $core))->send();

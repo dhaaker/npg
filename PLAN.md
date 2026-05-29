@@ -123,9 +123,24 @@ npgx/
 > standalone documents.
 
 ## Milestone 6 — Middleware
-- [ ] `lib/middleware.php`: onion runner `($request, $stack, $handler)`.
-- [ ] `middleware.php` list; resolve named middleware + closures.
+- [x] `lib/middleware.php`: onion runner `($request, $stack, $handler)`.
+- [x] `middleware.php` list; resolve named middleware + closures.
 - **Check:** a logging middleware wraps every request; order is observable.
+
+> Landed in `lib/middleware.php` (required from `bootstrap.php` after `router.php`).
+> A middleware is a plain callable `fn(Request $request, callable $next): mixed`.
+> `run_middleware($request, $stack, $core)` composes the stack around `$core`
+> via `array_reverse`, so the first list entry is the outermost layer (runs
+> first inbound, last outbound); a middleware can short-circuit by returning a
+> description without calling `$next`. `resolve_middleware()` accepts a closure
+> as-is or a string function name (throws `RuntimeException` like `call_handler`
+> if not callable). Both helpers are pure — all inputs are arguments. The
+> ordered list lives in the repo-root `middleware.php` (mirroring `config.php`/
+> `routes.php`), shipping a demo `log_requests` middleware. `public/index.php`
+> wraps the whole dispatch (routing + handler + 404) — `$core = fn($request) =>
+> dispatch($routes, $request)` — so logging covers 404s too. Covered by
+> `tests/middleware_test.php` (empty stack, inbound/outbound order, short-circuit,
+> name/closure resolution).
 
 ## Milestone 7 — Errors & dev experience
 - [ ] `lib/errors.php`: set error/exception/shutdown handlers.
